@@ -197,7 +197,7 @@ class WealthInequalitySimulation:
         # Actual stake is minimum of the two
         stake = min(stake_a, stake_b)
         
-        if stake < 0.01:  # Too small, skip
+        if stake < 0.001:  # Too small, skip (lowered from 0.01 to allow low-wealth exchanges)
             return
         
         # Determine who is richer
