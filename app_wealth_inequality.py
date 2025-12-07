@@ -238,7 +238,9 @@ def update_contrarian(greedy, neutral):
     [Output('sim-state', 'data'),
      Output('running-state', 'data'),
      Output('interval-component', 'disabled'),
-     Output('validation-message', 'children')],
+     Output('validation-message', 'children'),
+     Output('start-btn', 'disabled'),
+     Output('stop-btn', 'disabled')],
     [Input('start-btn', 'n_clicks'),
      Input('stop-btn', 'n_clicks'),
      Input('reset-btn', 'n_clicks')],
@@ -270,7 +272,7 @@ def control_simulation(start_clicks, stop_clicks, reset_clicks,
     ctx = callback_context
     if not ctx.triggered:
         if greedy_ratio + neutral_ratio > 1.0:
-            return None, False, True, "Error: Greedy + Neutral ratios cannot exceed 1.0!"
+            return None, False, True, "Error: Greedy + Neutral ratios cannot exceed 1.0!", False, True
         
         sim_data = {
             'params': {
@@ -288,13 +290,13 @@ def control_simulation(start_clicks, stop_clicks, reset_clicks,
             'initialized': True
         }
         sim_initialized = False
-        return sim_data, False, True, ""
+        return sim_data, False, True, "", False, True
     
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
     
     if button_id == 'start-btn':
         if greedy_ratio + neutral_ratio > 1.0:
-            return sim_data, False, True, "Error: Greedy + Neutral ratios cannot exceed 1.0!"
+            return sim_data, False, True, "Error: Greedy + Neutral ratios cannot exceed 1.0!", False, True
         
         if sim_data is None:
             sim_data = {
@@ -314,10 +316,12 @@ def control_simulation(start_clicks, stop_clicks, reset_clicks,
             }
             sim_initialized = False
         
-        return sim_data, True, False, ""
+        # Start simulation: disable Start, enable Stop
+        return sim_data, True, False, "", True, False
     
     elif button_id == 'stop-btn':
-        return sim_data, False, True, ""
+        # Stop simulation: enable Start, disable Stop
+        return sim_data, False, True, "", False, True
     
     elif button_id == 'reset-btn':
         sim_data = {
@@ -337,9 +341,11 @@ def control_simulation(start_clicks, stop_clicks, reset_clicks,
         }
         sim_instance = None
         sim_initialized = False
-        return sim_data, False, True, ""
+        # Reset: enable Start, disable Stop
+        return sim_data, False, True, "", False, True
     
-    return sim_data, is_running, not is_running, ""
+    # Default: enable Start, disable Stop
+    return sim_data, is_running, not is_running, "", not is_running, is_running
 
 @app.callback(
     [Output('status-bar', 'children'),
