@@ -422,10 +422,20 @@ def update_charts(n_intervals, sim_data, is_running, speed_multiplier):
         if speed_multiplier is None:
             speed_multiplier = 1
         
-        for _ in range(int(speed_multiplier)):
+        # Cap speed multiplier to prevent UI freezing
+        max_steps = min(int(speed_multiplier), 500)  # Max 500 steps per callback
+        
+        steps_completed = 0
+        for _ in range(max_steps):
             can_continue = sim_instance.step()
+            steps_completed += 1
             if not can_continue:
                 break
+            
+            # Safety check: if only a few agents left, slow down
+            active_count = len([a for a in sim_instance.agents if a.active])
+            if active_count < 5:
+                break  # Stop if less than 5 agents to avoid infinite loops
     
     # Get current results
     results = sim_instance.get_current_results()

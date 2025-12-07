@@ -257,26 +257,59 @@ class WealthInequalitySimulation:
         return (top_wealth / total_wealth) * 100
     
     def _record_statistics(self):
-        """Record current statistics"""
+        """Record current statistics - optimized for performance"""
         active_agents = [a for a in self.agents if a.active]
         wealths = [a.wealth for a in active_agents]
         
-        self.wealth_history.append(wealths.copy())
+        # Don't store full wealth history every round (too expensive)
+        # Only store every 10th round for history, but always calculate current metrics
+        if self.current_round % 10 == 0:
+            self.wealth_history.append(wealths.copy())
+        
         self.active_count_history.append(len(active_agents))
         
         if len(wealths) > 0:
-            gini = self._calculate_gini(wealths)
+            # Only sort once and reuse
+            sorted_wealths = sorted(wealths, reverse=True)
+            
+            # Gini calculation
+            gini = self._calculate_gini_from_sorted(sorted_wealths)
             self.gini_history.append(gini)
             
-            top_10 = self._calculate_top_wealth_share(wealths, 0.10)
-            self.top_10_percent_history.append(top_10)
+            # Top wealth shares (reuse sorted array)
+            total_wealth = sum(sorted_wealths)
+            if total_wealth > 0:
+                n_top_10 = max(1, int(len(sorted_wealths) * 0.10))
+                top_10 = (sum(sorted_wealths[:n_top_10]) / total_wealth) * 100
+                
+                n_top_1 = max(1, int(len(sorted_wealths) * 0.01))
+                top_1 = (sum(sorted_wealths[:n_top_1]) / total_wealth) * 100
+            else:
+                top_10 = 0.0
+                top_1 = 0.0
             
-            top_1 = self._calculate_top_wealth_share(wealths, 0.01)
+            self.top_10_percent_history.append(top_10)
             self.top_1_percent_history.append(top_1)
         else:
             self.gini_history.append(0.0)
             self.top_10_percent_history.append(0.0)
             self.top_1_percent_history.append(0.0)
+    
+    def _calculate_gini_from_sorted(self, sorted_wealths: List[float]) -> float:
+        """Calculate Gini coefficient from already-sorted wealth array"""
+        if len(sorted_wealths) == 0:
+            return 0.0
+        
+        # Reverse sort to ascending order for Gini formula
+        wealths = np.array(sorted_wealths[::-1])
+        n = len(wealths)
+        
+        if wealths.sum() == 0:
+            return 0.0
+        
+        index = np.arange(1, n + 1)
+        gini = (2 * np.sum(index * wealths)) / (n * wealths.sum()) - (n + 1) / n
+        return gini
     
     def step(self) -> bool:
         """Run one round of simulation. Returns True if simulation can continue."""
