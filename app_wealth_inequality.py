@@ -393,67 +393,78 @@ def control_simulation(start_clicks, stop_clicks, reset_clicks,
 def update_charts(n_intervals, sim_data, is_running, speed_multiplier):
     global sim_instance, sim_initialized
     
-    # Initialize simulation if needed
-    if sim_data is not None and (sim_instance is None or not sim_initialized):
-        params = sim_data['params']
-        sim_instance = WealthInequalitySimulation(
-            n_agents=params['n_agents'],
-            initial_wealth=params['initial_wealth'],
-            greedy_ratio=params['greedy_ratio'],
-            neutral_ratio=params['neutral_ratio'],
-            rich_bias=params['rich_bias'],
-            wealth_tax_enabled=params.get('wealth_tax_enabled', False),
-            wealth_tax_threshold=params.get('wealth_tax_threshold', 0.10),
-            wealth_tax_rate=params.get('wealth_tax_rate', 0.02),
-            ubi_enabled=params.get('ubi_enabled', False),
-            ubi_amount=params.get('ubi_amount', 1.0),
-            safety_net_enabled=params.get('safety_net_enabled', False),
-            safety_net_floor=params.get('safety_net_floor', 10.0),
-        )
-        sim_instance.reset()
-        sim_initialized = True
-    
-    if sim_instance is None:
-        return create_empty_outputs()
-    
-    # Run simulation step if running
-    if is_running and n_intervals is not None and n_intervals > 0:
-        # Run multiple steps based on speed multiplier
-        if speed_multiplier is None:
-            speed_multiplier = 1
+    try:
+        # Initialize simulation if needed
+        if sim_data is not None and (sim_instance is None or not sim_initialized):
+            params = sim_data['params']
+            sim_instance = WealthInequalitySimulation(
+                n_agents=params['n_agents'],
+                initial_wealth=params['initial_wealth'],
+                greedy_ratio=params['greedy_ratio'],
+                neutral_ratio=params['neutral_ratio'],
+                rich_bias=params['rich_bias'],
+                wealth_tax_enabled=params.get('wealth_tax_enabled', False),
+                wealth_tax_threshold=params.get('wealth_tax_threshold', 0.10),
+                wealth_tax_rate=params.get('wealth_tax_rate', 0.02),
+                ubi_enabled=params.get('ubi_enabled', False),
+                ubi_amount=params.get('ubi_amount', 1.0),
+                safety_net_enabled=params.get('safety_net_enabled', False),
+                safety_net_floor=params.get('safety_net_floor', 10.0),
+            )
+            sim_instance.reset()
+            sim_initialized = True
         
-        # Cap speed multiplier to prevent UI freezing - keep UI responsive
-        # Max 100 steps per callback for smooth updates
-        max_steps = min(int(speed_multiplier), 100)
+        if sim_instance is None:
+            return create_empty_outputs()
         
-        steps_completed = 0
-        for _ in range(max_steps):
-            can_continue = sim_instance.step()
-            steps_completed += 1
-            if not can_continue:
-                break
+        # Run simulation step if running
+        if is_running and n_intervals is not None and n_intervals > 0:
+            # Run multiple steps based on speed multiplier
+            if speed_multiplier is None:
+                speed_multiplier = 1
             
-            # Safety check: if only a few agents left, slow down
-            active_count = len([a for a in sim_instance.agents if a.active])
-            if active_count < 5:
-                break  # Stop if less than 5 agents to avoid infinite loops
+            # Cap speed multiplier to prevent UI freezing - keep UI responsive
+            # Max 100 steps per callback for smooth updates
+            max_steps = min(int(speed_multiplier), 100)
+            
+            steps_completed = 0
+            for _ in range(max_steps):
+                can_continue = sim_instance.step()
+                steps_completed += 1
+                if not can_continue:
+                    break
+                
+                # Safety check: if only a few agents left, slow down
+                active_count = len([a for a in sim_instance.agents if a.active])
+                if active_count < 5:
+                    break  # Stop if less than 5 agents to avoid infinite loops
+        
+        # Get current results
+        results = sim_instance.get_current_results()
+        
+        # Create all outputs
+        return create_all_outputs(sim_instance, results, is_running)
     
-    # Get current results
-    results = sim_instance.get_current_results()
-    
-    # Create all outputs
-    return create_all_outputs(sim_instance, results, is_running)
+    except Exception as e:
+        # Log error and reset simulation to recover
+        print(f"Error in update_charts: {e}")
+        sim_instance = None
+        sim_initialized = False
+        return create_empty_outputs()
 
 def create_empty_outputs():
     empty_fig = go.Figure()
-    empty_fig.update_layout(title="Waiting for simulation to start...")
+    empty_fig.update_layout(
+        title="Ready to start simulation",
+        font=dict(size=14, color='#7f8c8d')
+    )
     
     return (
         "Not running | Configure parameters and click Start",
-        html.Div("No data yet"),
+        html.Div("No data yet", style={'textAlign': 'center', 'color': '#7f8c8d'}),
         empty_fig, empty_fig, empty_fig, empty_fig,
-        html.Div("No data yet"),
-        100
+        html.Div("No data yet", style={'textAlign': 'center', 'color': '#7f8c8d'}),
+        50
     )
 
 def create_all_outputs(sim, results, is_running):
