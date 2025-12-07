@@ -125,6 +125,7 @@ class WealthInequalitySimulation:
         if agent.active and agent.wealth < self.min_wealth:
             agent.wealth = 0
             agent.active = False
+            # Agent is now bankrupt and removed from future exchanges
     
     def _apply_wealth_tax(self):
         """Apply wealth tax to top X% of agents"""
@@ -197,8 +198,7 @@ class WealthInequalitySimulation:
         # Actual stake is minimum of the two
         stake = min(stake_a, stake_b)
         
-        if stake < 0.001:  # Too small, skip (lowered from 0.01 to allow low-wealth exchanges)
-            return
+        # No minimum threshold - allow all exchanges to continue until bankruptcy
         
         # Determine who is richer
         if agent_a.wealth > agent_b.wealth:

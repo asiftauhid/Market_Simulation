@@ -450,7 +450,7 @@ def create_all_outputs(sim, results, is_running):
     active_count = len([a for a in sim.agents if a.active])
     
     # Build status message with redistribution info
-    status_parts = [f"{'Running' if is_running else 'Paused'} | Round: {sim.current_round} | Active: {active_count} agents | Bankrupt: {results['bankrupt_count']}"]
+    status_parts = [f"{'Running' if is_running else 'Paused'} | Round: {sim.current_round} | Active: {active_count} agents | Bankrupt: {results['bankrupt_count']} (< ${sim.min_wealth})"]
     
     policies_active = []
     if sim.wealth_tax_enabled:
