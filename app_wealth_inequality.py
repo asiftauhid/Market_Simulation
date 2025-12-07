@@ -427,17 +427,15 @@ def update_charts(n_intervals, sim_data, is_running, speed_multiplier):
             # Max 100 steps per callback for smooth updates
             max_steps = min(int(speed_multiplier), 100)
             
-            steps_completed = 0
             for _ in range(max_steps):
                 can_continue = sim_instance.step()
-                steps_completed += 1
                 if not can_continue:
                     break
                 
                 # Safety check: if only a few agents left, slow down
                 active_count = len([a for a in sim_instance.agents if a.active])
-                if active_count < 5:
-                    break  # Stop if less than 5 agents to avoid infinite loops
+                if active_count < 2:
+                    break
         
         # Get current results
         results = sim_instance.get_current_results()
@@ -448,6 +446,8 @@ def update_charts(n_intervals, sim_data, is_running, speed_multiplier):
     except Exception as e:
         # Log error and reset simulation to recover
         print(f"Error in update_charts: {e}")
+        import traceback
+        traceback.print_exc()
         sim_instance = None
         sim_initialized = False
         return create_empty_outputs()
