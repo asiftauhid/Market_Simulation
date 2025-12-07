@@ -579,5 +579,9 @@ if __name__ == '__main__':
     # Use PORT environment variable for deployment (Render, Railway, Heroku)
     port = int(os.environ.get('PORT', 8050))
     debug = os.environ.get('DEBUG', 'False').lower() == 'true'
-    app.run(debug=debug, host='0.0.0.0', port=port)
+    # For production, use single-threaded mode to maintain state
+    app.run(debug=debug, host='0.0.0.0', port=port, threaded=False)
+
+# Expose server for gunicorn
+server = app.server
 
