@@ -468,6 +468,17 @@ def create_empty_outputs():
     )
 
 def create_all_outputs(sim, results, is_running):
+    # Downsample history data for performance if too many data points
+    max_points = 500  # Maximum points to display in charts
+    
+    def downsample_data(data_list):
+        """Downsample data to max_points for chart performance"""
+        if len(data_list) <= max_points:
+            return data_list
+        # Take every nth point to reduce to max_points
+        step = len(data_list) // max_points
+        return data_list[::step]
+    
     # Status bar
     active_count = len([a for a in sim.agents if a.active])
     
@@ -539,10 +550,11 @@ def create_all_outputs(sim, results, is_running):
     
     metrics = html.Div(metric_boxes)
     
-    # Inequality evolution chart (single plot)
+    # Inequality evolution chart (single plot) - DOWNSAMPLED
     inequality_fig = go.Figure()
+    gini_data = downsample_data(results['gini_history'])
     inequality_fig.add_trace(
-        go.Scatter(y=results['gini_history'], mode='lines',
+        go.Scatter(y=gini_data, mode='lines',
                   line=dict(color='#e74c3c', width=2), name='Gini Coefficient')
     )
     inequality_fig.update_layout(
@@ -551,7 +563,8 @@ def create_all_outputs(sim, results, is_running):
         yaxis_title="Gini",
         height=300,
         showlegend=False,
-        margin=dict(l=50, r=20, t=40, b=40)
+        margin=dict(l=50, r=20, t=40, b=40),
+        uirevision='constant'  # Prevent unnecessary replotting
     )
     
     # Wealth histogram
@@ -565,30 +578,36 @@ def create_all_outputs(sim, results, is_running):
         title={'text': "Wealth Distribution", 'font': {'size': 14}},
         xaxis_title="Wealth", yaxis_title="Agents",
         height=300,
-        margin=dict(l=50, r=20, t=40, b=40)
+        margin=dict(l=50, r=20, t=40, b=40),
+        uirevision='constant'
     )
     
-    # Survival chart
+    # Survival chart - DOWNSAMPLED
     survival_fig = go.Figure()
+    survival_data = downsample_data(results['active_count_history'])
     survival_fig.add_trace(go.Scatter(
-        y=results['active_count_history'], mode='lines',
+        y=survival_data, mode='lines',
         fill='tozeroy', line=dict(color='#9467bd', width=2)
     ))
     survival_fig.update_layout(
         title={'text': "Agent Survival", 'font': {'size': 14}},
         xaxis_title="Round", yaxis_title="Active",
         height=300,
-        margin=dict(l=50, r=20, t=40, b=40)
+        margin=dict(l=50, r=20, t=40, b=40),
+        uirevision='constant'
     )
     
-    # Wealth concentration chart
+    # Wealth concentration chart - DOWNSAMPLED
     concentration_fig = go.Figure()
+    top_10_data = downsample_data(results['top_10_percent_history'])
+    top_1_data = downsample_data(results['top_1_percent_history'])
+    
     concentration_fig.add_trace(go.Scatter(
-        y=results['top_10_percent_history'], mode='lines',
+        y=top_10_data, mode='lines',
         name='Top 10%', line=dict(color='#f39c12', width=2)
     ))
     concentration_fig.add_trace(go.Scatter(
-        y=results['top_1_percent_history'], mode='lines',
+        y=top_1_data, mode='lines',
         name='Top 1%', line=dict(color='#e74c3c', width=2)
     ))
     concentration_fig.update_layout(
@@ -596,7 +615,8 @@ def create_all_outputs(sim, results, is_running):
         xaxis_title="Round", yaxis_title="% Wealth",
         height=300, showlegend=True,
         margin=dict(l=50, r=20, t=40, b=40),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        uirevision='constant'
     )
     
     # Results table
