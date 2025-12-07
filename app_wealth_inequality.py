@@ -19,7 +19,7 @@ app.layout = html.Div([
     # Store components
     dcc.Store(id='sim-state', data=None),
     dcc.Store(id='running-state', data=False),
-    dcc.Interval(id='interval-component', interval=100, disabled=True),
+    dcc.Interval(id='interval-component', interval=50, disabled=True),  # Faster updates (50ms)
     
     # Header
     html.Div([
@@ -422,8 +422,9 @@ def update_charts(n_intervals, sim_data, is_running, speed_multiplier):
         if speed_multiplier is None:
             speed_multiplier = 1
         
-        # Cap speed multiplier to prevent UI freezing
-        max_steps = min(int(speed_multiplier), 500)  # Max 500 steps per callback
+        # Cap speed multiplier to prevent UI freezing - keep UI responsive
+        # Max 100 steps per callback for smooth updates
+        max_steps = min(int(speed_multiplier), 100)
         
         steps_completed = 0
         for _ in range(max_steps):
@@ -617,7 +618,7 @@ def create_all_outputs(sim, results, is_running):
               'textAlign': 'center', 'borderRadius': '4px'})
     
     return (status, metrics, inequality_fig, wealth_fig, survival_fig, 
-            concentration_fig, table, 100)
+            concentration_fig, table, 50)  # Return 50ms for responsive updates
 
 if __name__ == '__main__':
     import os

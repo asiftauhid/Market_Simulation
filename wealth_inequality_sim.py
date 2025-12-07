@@ -262,8 +262,8 @@ class WealthInequalitySimulation:
         wealths = [a.wealth for a in active_agents]
         
         # Don't store full wealth history every round (too expensive)
-        # Only store every 10th round for history, but always calculate current metrics
-        if self.current_round % 10 == 0:
+        # Only store every 5th round for history, but always calculate current metrics
+        if self.current_round % 5 == 0:
             self.wealth_history.append(wealths.copy())
         
         self.active_count_history.append(len(active_agents))
