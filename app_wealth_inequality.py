@@ -240,7 +240,9 @@ def update_contrarian(greedy, neutral):
      Output('interval-component', 'disabled'),
      Output('validation-message', 'children'),
      Output('start-btn', 'disabled'),
-     Output('stop-btn', 'disabled')],
+     Output('stop-btn', 'disabled'),
+     Output('start-btn', 'style'),
+     Output('stop-btn', 'style')],
     [Input('start-btn', 'n_clicks'),
      Input('stop-btn', 'n_clicks'),
      Input('reset-btn', 'n_clicks')],
@@ -269,10 +271,33 @@ def control_simulation(start_clicks, stop_clicks, reset_clicks,
                        sim_data, is_running):
     global sim_instance, sim_initialized
     
+    # Define button styles
+    start_enabled_style = {
+        'width': '120px', 'padding': '10px 20px', 'fontSize': '14px', 'fontWeight': '500',
+        'backgroundColor': '#27ae60', 'color': 'white', 'border': 'none',
+        'borderRadius': '4px', 'cursor': 'pointer', 'marginRight': '10px'
+    }
+    start_disabled_style = {
+        'width': '120px', 'padding': '10px 20px', 'fontSize': '14px', 'fontWeight': '500',
+        'backgroundColor': '#1e7e34', 'color': '#cccccc', 'border': 'none',
+        'borderRadius': '4px', 'cursor': 'not-allowed', 'marginRight': '10px', 'opacity': '0.7'
+    }
+    stop_enabled_style = {
+        'width': '120px', 'padding': '10px 20px', 'fontSize': '14px', 'fontWeight': '500',
+        'backgroundColor': '#e74c3c', 'color': 'white', 'border': 'none',
+        'borderRadius': '4px', 'cursor': 'pointer', 'marginRight': '10px'
+    }
+    stop_disabled_style = {
+        'width': '120px', 'padding': '10px 20px', 'fontSize': '14px', 'fontWeight': '500',
+        'backgroundColor': '#95a5a6', 'color': '#cccccc', 'border': 'none',
+        'borderRadius': '4px', 'cursor': 'not-allowed', 'marginRight': '10px', 'opacity': '0.6'
+    }
+    
     ctx = callback_context
     if not ctx.triggered:
         if greedy_ratio + neutral_ratio > 1.0:
-            return None, False, True, "Error: Greedy + Neutral ratios cannot exceed 1.0!", False, True
+            return (None, False, True, "Error: Greedy + Neutral ratios cannot exceed 1.0!", 
+                    False, True, start_enabled_style, stop_disabled_style)
         
         sim_data = {
             'params': {
@@ -290,13 +315,14 @@ def control_simulation(start_clicks, stop_clicks, reset_clicks,
             'initialized': True
         }
         sim_initialized = False
-        return sim_data, False, True, "", False, True
+        return (sim_data, False, True, "", False, True, start_enabled_style, stop_disabled_style)
     
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
     
     if button_id == 'start-btn':
         if greedy_ratio + neutral_ratio > 1.0:
-            return sim_data, False, True, "Error: Greedy + Neutral ratios cannot exceed 1.0!", False, True
+            return (sim_data, False, True, "Error: Greedy + Neutral ratios cannot exceed 1.0!", 
+                    False, True, start_enabled_style, stop_disabled_style)
         
         if sim_data is None:
             sim_data = {
@@ -316,12 +342,12 @@ def control_simulation(start_clicks, stop_clicks, reset_clicks,
             }
             sim_initialized = False
         
-        # Start simulation: disable Start, enable Stop
-        return sim_data, True, False, "", True, False
+        # Start simulation: disable Start (dark green), enable Stop (red)
+        return (sim_data, True, False, "", True, False, start_disabled_style, stop_enabled_style)
     
     elif button_id == 'stop-btn':
-        # Stop simulation: enable Start, disable Stop
-        return sim_data, False, True, "", False, True
+        # Stop simulation: enable Start (green), disable Stop (gray)
+        return (sim_data, False, True, "", False, True, start_enabled_style, stop_disabled_style)
     
     elif button_id == 'reset-btn':
         sim_data = {
@@ -341,11 +367,14 @@ def control_simulation(start_clicks, stop_clicks, reset_clicks,
         }
         sim_instance = None
         sim_initialized = False
-        # Reset: enable Start, disable Stop
-        return sim_data, False, True, "", False, True
+        # Reset: enable Start (green), disable Stop (gray)
+        return (sim_data, False, True, "", False, True, start_enabled_style, stop_disabled_style)
     
-    # Default: enable Start, disable Stop
-    return sim_data, is_running, not is_running, "", not is_running, is_running
+    # Default: based on current running state
+    if is_running:
+        return (sim_data, True, False, "", True, False, start_disabled_style, stop_enabled_style)
+    else:
+        return (sim_data, False, True, "", False, True, start_enabled_style, stop_disabled_style)
 
 @app.callback(
     [Output('status-bar', 'children'),
