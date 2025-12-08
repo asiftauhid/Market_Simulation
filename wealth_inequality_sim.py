@@ -391,7 +391,16 @@ class WealthInequalitySimulation:
         }
     
     def to_dict(self) -> dict:
-        """Serialize simulation state to dictionary for storage"""
+        """Serialize simulation state to dictionary for storage
+        Only keep last 1000 data points to prevent huge JSON payloads"""
+        max_history = 1000
+        
+        def limit_history(data_list):
+            """Keep only recent history to limit size"""
+            if len(data_list) > max_history:
+                return data_list[-max_history:]
+            return data_list
+        
         return {
             # Parameters
             'n_agents': self.n_agents,
@@ -407,14 +416,13 @@ class WealthInequalitySimulation:
             'ubi_amount': self.ubi_amount,
             'safety_net_enabled': self.safety_net_enabled,
             'safety_net_floor': self.safety_net_floor,
-            # State
+            # State - only serialize agents and recent history
             'agents': [{'id': a.id, 'style': a.style.value, 'wealth': a.wealth, 'active': a.active} 
                       for a in self.agents],
-            'wealth_history': self.wealth_history,
-            'gini_history': self.gini_history,
-            'active_count_history': self.active_count_history,
-            'top_10_percent_history': self.top_10_percent_history,
-            'top_1_percent_history': self.top_1_percent_history,
+            'gini_history': limit_history(self.gini_history),
+            'active_count_history': limit_history(self.active_count_history),
+            'top_10_percent_history': limit_history(self.top_10_percent_history),
+            'top_1_percent_history': limit_history(self.top_1_percent_history),
             'current_round': self.current_round,
             'total_taxes_collected': self.total_taxes_collected,
             'total_ubi_distributed': self.total_ubi_distributed,
@@ -450,8 +458,8 @@ class WealthInequalitySimulation:
             active=a['active']
         ) for a in data['agents']]
         
-        # Restore history
-        sim.wealth_history = data['wealth_history']
+        # Restore history (wealth_history not serialized to save space)
+        sim.wealth_history = []  # Not needed for display
         sim.gini_history = data['gini_history']
         sim.active_count_history = data['active_count_history']
         sim.top_10_percent_history = data['top_10_percent_history']

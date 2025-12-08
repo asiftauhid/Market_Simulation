@@ -425,6 +425,12 @@ def update_simulation(n_intervals, sim_data, is_running, speed_multiplier):
             
             # Serialize back
             sim_data = sim.to_dict()
+            
+            # Debug: log serialized size every 100 rounds
+            if sim.current_round % 100 == 0:
+                import json
+                size_kb = len(json.dumps(sim_data)) / 1024
+                print(f"Round {sim.current_round}: Serialized size = {size_kb:.1f} KB")
         
         # Get current results and display
         results = sim.get_current_results()
