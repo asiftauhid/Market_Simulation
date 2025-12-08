@@ -4,18 +4,36 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import pandas as pd
 import numpy as np
+import uuid
 from wealth_inequality_sim import WealthInequalitySimulation, AgentStyle
 
 # Initialize Dash app
 app = dash.Dash(__name__, suppress_callback_exceptions=True)
 app.title = "Wealth Inequality Emergence"
 
+# Server-side simulation storage (keyed by session ID)
+# This avoids serialization overhead - only session ID is passed to client
+SIMULATIONS = {}
+
+def get_sim(session_id):
+    """Get simulation for session"""
+    return SIMULATIONS.get(session_id)
+
+def set_sim(session_id, sim):
+    """Store simulation for session"""
+    SIMULATIONS[session_id] = sim
+
+def delete_sim(session_id):
+    """Delete simulation for session"""
+    if session_id in SIMULATIONS:
+        del SIMULATIONS[session_id]
+
 # App layout
 app.layout = html.Div([
-    # Store components
-    dcc.Store(id='sim-state', data=None),
+    # Store components - only stores session ID and running state (tiny payload)
+    dcc.Store(id='session-id', data=str(uuid.uuid4())),
     dcc.Store(id='running-state', data=False),
-    dcc.Interval(id='interval-component', interval=50, disabled=True),  # Faster updates (50ms)
+    dcc.Interval(id='interval-component', interval=100, disabled=True),  # 100ms interval
     
     # Header
     html.Div([
@@ -231,8 +249,7 @@ def update_contrarian(greedy, neutral):
     return f"Contrarian Ratio: {contrarian:.2f}"
 
 @app.callback(
-    [Output('sim-state', 'data'),
-     Output('running-state', 'data'),
+    [Output('running-state', 'data'),
      Output('interval-component', 'disabled'),
      Output('validation-message', 'children'),
      Output('start-btn', 'disabled'),
@@ -242,12 +259,12 @@ def update_contrarian(greedy, neutral):
     [Input('start-btn', 'n_clicks'),
      Input('stop-btn', 'n_clicks'),
      Input('reset-btn', 'n_clicks')],
-    [State('n-agents', 'value'),
+    [State('session-id', 'data'),
+     State('n-agents', 'value'),
      State('initial-wealth', 'value'),
      State('greedy-ratio', 'value'),
      State('neutral-ratio', 'value'),
      State('rich-bias', 'value'),
-     State('speed-multiplier', 'value'),
      State('wealth-tax-enabled', 'value'),
      State('wealth-tax-threshold', 'value'),
      State('wealth-tax-rate', 'value'),
@@ -255,16 +272,15 @@ def update_contrarian(greedy, neutral):
      State('ubi-amount', 'value'),
      State('safety-net-enabled', 'value'),
      State('safety-net-floor', 'value'),
-     State('sim-state', 'data'),
      State('running-state', 'data')]
 )
 def control_simulation(start_clicks, stop_clicks, reset_clicks,
-                       n_agents, initial_wealth, greedy_ratio, neutral_ratio,
-                       rich_bias, speed_multiplier,
+                       session_id, n_agents, initial_wealth, greedy_ratio, neutral_ratio,
+                       rich_bias,
                        wealth_tax_enabled_list, wealth_tax_threshold, wealth_tax_rate,
                        ubi_enabled_list, ubi_amount,
                        safety_net_enabled_list, safety_net_floor,
-                       sim_data, is_running):
+                       is_running):
     
     # Define button styles
     start_enabled_style = {
@@ -293,13 +309,7 @@ def control_simulation(start_clicks, stop_clicks, reset_clicks,
     ubi_enabled = True if ubi_enabled_list else False
     safety_net_enabled = True if safety_net_enabled_list else False
     
-    ctx = callback_context
-    if not ctx.triggered:
-        if greedy_ratio + neutral_ratio > 1.0:
-            return (None, False, True, "Error: Greedy + Neutral ratios cannot exceed 1.0!", 
-                    False, True, start_enabled_style, stop_disabled_style)
-        
-        # Initialize new simulation
+    def create_sim():
         sim = WealthInequalitySimulation(
             n_agents=n_agents, initial_wealth=initial_wealth,
             greedy_ratio=greedy_ratio, neutral_ratio=neutral_ratio,
@@ -313,66 +323,48 @@ def control_simulation(start_clicks, stop_clicks, reset_clicks,
             safety_net_floor=safety_net_floor,
         )
         sim.reset()
-        sim_data = sim.to_dict()
-        return (sim_data, False, True, "", False, True, start_enabled_style, stop_disabled_style)
+        return sim
+    
+    ctx = callback_context
+    if not ctx.triggered:
+        if greedy_ratio + neutral_ratio > 1.0:
+            return (False, True, "Error: Greedy + Neutral ratios cannot exceed 1.0!", 
+                    False, True, start_enabled_style, stop_disabled_style)
+        
+        # Initialize simulation in server memory
+        set_sim(session_id, create_sim())
+        return (False, True, "", False, True, start_enabled_style, stop_disabled_style)
     
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
     
     if button_id == 'start-btn':
         if greedy_ratio + neutral_ratio > 1.0:
-            return (sim_data, False, True, "Error: Greedy + Neutral ratios cannot exceed 1.0!", 
+            return (False, True, "Error: Greedy + Neutral ratios cannot exceed 1.0!", 
                     False, True, start_enabled_style, stop_disabled_style)
         
-        if sim_data is None:
-            # Initialize new simulation
-            sim = WealthInequalitySimulation(
-                n_agents=n_agents, initial_wealth=initial_wealth,
-                greedy_ratio=greedy_ratio, neutral_ratio=neutral_ratio,
-                rich_bias=rich_bias,
-                wealth_tax_enabled=wealth_tax_enabled,
-                wealth_tax_threshold=wealth_tax_threshold,
-                wealth_tax_rate=wealth_tax_rate,
-                ubi_enabled=ubi_enabled,
-                ubi_amount=ubi_amount,
-                safety_net_enabled=safety_net_enabled,
-                safety_net_floor=safety_net_floor,
-            )
-            sim.reset()
-            sim_data = sim.to_dict()
+        # Create simulation if not exists
+        if get_sim(session_id) is None:
+            set_sim(session_id, create_sim())
         
-        # Start simulation: disable Start (dark green), enable Stop (red)
-        return (sim_data, True, False, "", True, False, start_disabled_style, stop_enabled_style)
+        # Start: disable Start, enable Stop, enable interval
+        return (True, False, "", True, False, start_disabled_style, stop_enabled_style)
     
     elif button_id == 'stop-btn':
-        # Stop simulation: enable Start (green), disable Stop (gray)
-        return (sim_data, False, True, "", False, True, start_enabled_style, stop_disabled_style)
+        # Stop: enable Start, disable Stop, disable interval
+        return (False, True, "", False, True, start_enabled_style, stop_disabled_style)
     
     elif button_id == 'reset-btn':
-        # Initialize new simulation
-        sim = WealthInequalitySimulation(
-            n_agents=n_agents, initial_wealth=initial_wealth,
-            greedy_ratio=greedy_ratio, neutral_ratio=neutral_ratio,
-            rich_bias=rich_bias,
-            wealth_tax_enabled=wealth_tax_enabled,
-            wealth_tax_threshold=wealth_tax_threshold,
-            wealth_tax_rate=wealth_tax_rate,
-            ubi_enabled=ubi_enabled,
-            ubi_amount=ubi_amount,
-            safety_net_enabled=safety_net_enabled,
-            safety_net_floor=safety_net_floor,
-        )
-        sim.reset()
-        sim_data = sim.to_dict()
-        # Reset: enable Start (green), disable Stop (gray)
-        return (sim_data, False, True, "", False, True, start_enabled_style, stop_disabled_style)
+        # Reset simulation in server memory
+        set_sim(session_id, create_sim())
+        return (False, True, "", False, True, start_enabled_style, stop_disabled_style)
     
-    # Default: based on current running state
+    # Default
     if is_running:
-        return (sim_data, True, False, "", True, False, start_disabled_style, stop_enabled_style)
+        return (True, False, "", True, False, start_disabled_style, stop_enabled_style)
     else:
-        return (sim_data, False, True, "", False, True, start_enabled_style, stop_disabled_style)
+        return (False, True, "", False, True, start_enabled_style, stop_disabled_style)
 
-# Main update callback - runs on interval tick AND when sim-state changes
+# Main update callback - runs on interval tick
 @app.callback(
     [Output('status-bar', 'children'),
      Output('key-metrics', 'children'),
@@ -381,73 +373,53 @@ def control_simulation(start_clicks, stop_clicks, reset_clicks,
      Output('survival-chart', 'figure'),
      Output('concentration-chart', 'figure'),
      Output('results-table', 'children'),
-     Output('interval-component', 'interval'),
-     Output('sim-state', 'data', allow_duplicate=True)],
-    [Input('interval-component', 'n_intervals'),
-     Input('sim-state', 'data')],
-    [State('running-state', 'data'),
-     State('speed-multiplier', 'value')],
-    prevent_initial_call=True
+     Output('interval-component', 'interval')],
+    [Input('interval-component', 'n_intervals')],
+    [State('session-id', 'data'),
+     State('running-state', 'data'),
+     State('speed-multiplier', 'value')]
 )
-def update_simulation(n_intervals, sim_data, is_running, speed_multiplier):
-    """Update simulation and display - triggered by interval OR state changes"""
-    
-    ctx = callback_context
-    if not ctx.triggered:
-        return create_empty_outputs() + (sim_data,)
-    
-    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+def update_simulation(n_intervals, session_id, is_running, speed_multiplier):
+    """Update simulation and display - triggered by interval"""
     
     try:
-        if sim_data is None:
-            return create_empty_outputs() + (sim_data,)
+        sim = get_sim(session_id)
+        if sim is None:
+            return create_empty_outputs()
         
-        # Deserialize simulation
-        sim = WealthInequalitySimulation.from_dict(sim_data)
-        
-        # Run simulation steps ONLY if triggered by interval and running
-        if trigger_id == 'interval-component' and is_running:
+        # Run simulation steps if running
+        if is_running:
             if speed_multiplier is None:
                 speed_multiplier = 1
             
-            # Cap speed multiplier to prevent UI freezing
-            max_steps = min(int(speed_multiplier), 20)
+            # Use actual speed multiplier value
+            max_steps = max(1, int(speed_multiplier))
             
             for _ in range(max_steps):
                 can_continue = sim.step()
                 if not can_continue:
                     break
                 
-                # Safety check: if only a few agents left, stop
                 active_count = len([a for a in sim.agents if a.active])
                 if active_count < 2:
                     break
-            
-            # Serialize back
-            sim_data = sim.to_dict()
-            
-            # Debug: log serialized size every 100 rounds
-            if sim.current_round % 100 == 0:
-                import json
-                size_kb = len(json.dumps(sim_data)) / 1024
-                print(f"Round {sim.current_round}: Serialized size = {size_kb:.1f} KB")
         
         # Get current results and display
         results = sim.get_current_results()
-        outputs = create_all_outputs(sim, results, is_running)
-        return outputs + (sim_data,)
+        return create_all_outputs(sim, results, is_running)
     
     except Exception as e:
         print(f"Error in update_simulation: {e}")
         import traceback
         traceback.print_exc()
-        return create_empty_outputs() + (sim_data,)
+        return create_empty_outputs()
 
 def create_empty_outputs():
     empty_fig = go.Figure()
     empty_fig.update_layout(
         title="Ready to start simulation",
-        font=dict(size=14, color='#7f8c8d')
+        font=dict(size=14, color='#7f8c8d'),
+        uirevision='constant'
     )
     
     return (
@@ -455,7 +427,7 @@ def create_empty_outputs():
         html.Div("No data yet", style={'textAlign': 'center', 'color': '#7f8c8d'}),
         empty_fig, empty_fig, empty_fig, empty_fig,
         html.Div("No data yet", style={'textAlign': 'center', 'color': '#7f8c8d'}),
-        100  # 100ms interval by default
+        100
     )
 
 def create_all_outputs(sim, results, is_running):
