@@ -411,7 +411,7 @@ def update_simulation(n_intervals, sim_data, is_running, speed_multiplier):
                 speed_multiplier = 1
             
             # Cap speed multiplier to prevent UI freezing
-            max_steps = min(int(speed_multiplier), 100)
+            max_steps = min(int(speed_multiplier), 20)
             
             for _ in range(max_steps):
                 can_continue = sim.step()
@@ -455,7 +455,7 @@ def create_empty_outputs():
         html.Div("No data yet", style={'textAlign': 'center', 'color': '#7f8c8d'}),
         empty_fig, empty_fig, empty_fig, empty_fig,
         html.Div("No data yet", style={'textAlign': 'center', 'color': '#7f8c8d'}),
-        50
+        100  # 100ms interval by default
     )
 
 def create_all_outputs(sim, results, is_running):
@@ -639,8 +639,9 @@ def create_all_outputs(sim, results, is_running):
     ], style={'width': '100%', 'borderCollapse': 'collapse', 'border': '1px solid #ecf0f1',
               'textAlign': 'center', 'borderRadius': '4px'})
     
+    # Use 100ms interval to reduce callback pressure in production
     return (status, metrics, inequality_fig, wealth_fig, survival_fig, 
-            concentration_fig, table, 50)  # Return 50ms for responsive updates
+            concentration_fig, table, 100)
 
 if __name__ == '__main__':
     import os

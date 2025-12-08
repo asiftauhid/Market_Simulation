@@ -392,8 +392,8 @@ class WealthInequalitySimulation:
     
     def to_dict(self) -> dict:
         """Serialize simulation state to dictionary for storage
-        Only keep last 1000 data points to prevent huge JSON payloads"""
-        max_history = 1000
+        Only keep last N data points to keep payloads small."""
+        max_history = 300
         
         def limit_history(data_list):
             """Keep only recent history to limit size"""
