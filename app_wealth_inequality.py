@@ -381,6 +381,7 @@ def control_simulation(start_clicks, stop_clicks, reset_clicks,
 )
 def update_simulation(n_intervals, session_id, is_running, speed_multiplier):
     """Update simulation and display - triggered by interval"""
+    import sys
     
     try:
         sim = get_sim(session_id)
@@ -403,13 +404,18 @@ def update_simulation(n_intervals, session_id, is_running, speed_multiplier):
                 active_count = len([a for a in sim.agents if a.active])
                 if active_count < 2:
                     break
+            
+            # Flush output to ensure logs appear immediately
+            if sim.current_round % 50 == 0:
+                print(f"Round {sim.current_round}, Active: {active_count}", flush=True)
+                sys.stdout.flush()
         
         # Get current results and display
         results = sim.get_current_results()
         return create_all_outputs(sim, results, is_running)
     
     except Exception as e:
-        print(f"Error in update_simulation: {e}")
+        print(f"Error in update_simulation: {e}", flush=True)
         import traceback
         traceback.print_exc()
         return create_empty_outputs()
