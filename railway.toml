@@ -1,5 +1,0 @@
-[build]
-
-[deploy]
-startCommand = "python app_wealth_inequality.py"
-
