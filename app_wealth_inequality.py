@@ -653,12 +653,14 @@ def create_all_outputs(sim, results, is_running):
 
 if __name__ == '__main__':
     import os
-    # Use PORT environment variable for deployment (Render, Railway, Heroku)
+    # Use PORT environment variable for deployment
     port = int(os.environ.get('PORT', 8050))
-    debug = os.environ.get('DEBUG', 'False').lower() == 'true'
-    # Run with proper callback support
-    app.run(debug=debug, host='0.0.0.0', port=port, use_reloader=False, threaded=True)
+    
+    # For local development with waitress
+    from waitress import serve
+    print(f"Starting server on port {port}...")
+    serve(app.server, host='0.0.0.0', port=port, threads=4)
 
-# Expose server for production WSGI servers
+# Expose server for WSGI servers
 server = app.server
 
