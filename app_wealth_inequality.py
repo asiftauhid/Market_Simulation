@@ -429,7 +429,6 @@ def create_empty_outputs():
     empty_fig.update_layout(
         title="Ready to start simulation",
         font=dict(size=14, color='#7f8c8d'),
-        uirevision='constant'
     )
     
     return (
@@ -537,7 +536,7 @@ def create_all_outputs(sim, results, is_running):
         height=300,
         showlegend=False,
         margin=dict(l=50, r=20, t=40, b=40),
-        uirevision='constant'  # Prevent unnecessary replotting
+  # Prevent unnecessary replotting
     )
     
     # Wealth histogram
@@ -552,7 +551,6 @@ def create_all_outputs(sim, results, is_running):
         xaxis_title="Wealth", yaxis_title="Agents",
         height=300,
         margin=dict(l=50, r=20, t=40, b=40),
-        uirevision='constant'
     )
     
     # Survival chart - DOWNSAMPLED
@@ -567,7 +565,6 @@ def create_all_outputs(sim, results, is_running):
         xaxis_title="Round", yaxis_title="Active",
         height=300,
         margin=dict(l=50, r=20, t=40, b=40),
-        uirevision='constant'
     )
     
     # Wealth concentration chart - DOWNSAMPLED
@@ -589,7 +586,6 @@ def create_all_outputs(sim, results, is_running):
         height=300, showlegend=True,
         margin=dict(l=50, r=20, t=40, b=40),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        uirevision='constant'
     )
     
     # Results table
