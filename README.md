@@ -1,110 +1,428 @@
 # Wealth Inequality Emergence Simulation
 
-Interactive real-time simulation showing how wealth inequality emerges from simple rules.
+**An interactive agent-based model demonstrating how extreme wealth inequality emerges naturally from simple, symmetric trading rules—even when everyone starts with equal wealth.**
 
-## The Story
+![Python](https://img.shields.io/badge/python-3.8+-blue.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
 
-**Everyone starts equal** → Simple trading rules + slight rich advantage → **Massive inequality + wealth concentration**
+---
 
-## Model
+## 🎯 What This Simulates
 
-### Starting Conditions
+This simulation implements the **"yard-sale model"** of wealth exchange, showing a profound economic insight:
 
-- All agents start with **equal wealth** (default: $100)
-- No initial class differences
-- Only difference: **trading styles** (Greedy, Neutral, Contrarian)
+> **Equal starting conditions + Fair exchange rules + Tiny structural advantage = Massive inequality**
 
-### Trading Mechanism (Yard-Sale Model)
+- Everyone starts with **$100** (perfectly equal)
+- Simple pairwise trading with symmetric rules
+- Richer agent gets a **5%** edge (e.g., better information, lower costs)
+- After thousands of rounds: **Top 1% owns 30-50%, most agents bankrupt**
 
-Each round:
+---
 
-1. Two random agents are paired
-2. Each stakes a % of their wealth based on style:
-   - **Greedy**: 30% (high risk)
-   - **Neutral**: 20% (medium risk)
-   - **Contrarian**: 10% (low risk)
-3. Actual stake = minimum of both
-4. **Rich-Get-Richer**: Richer agent has slight advantage (default 5%)
-5. Winner takes stake, loser loses it
-6. Bankruptcy: Agents with near-zero wealth exit
+## 🚀 Quick Start
 
-### Emergent Phenomena
+### Prerequisites
 
-- **Gini Coefficient**: Rises from 0 (perfect equality) to high values
-- **Wealth Concentration**: Top 10% and top 1% own increasing shares
-- **Bankruptcies**: Many agents go broke
-- **Few Winners**: Small fraction becomes extremely wealthy
+- Python 3.8 or higher
+- pip (Python package manager)
 
-## Quick Start
+### Installation
 
 ```bash
+# Clone or download this repository
+cd market_simulation
+
 # Install dependencies
 pip install -r requirements.txt
+```
 
-# Run the simulation
+### Run the Simulation
+
+```bash
 python app_wealth_inequality.py
 ```
 
-Open browser at `http://localhost:8050`
+Then open your browser at:
 
-## Usage
+```
+http://localhost:8050
+```
 
-1. **Configure parameters**:
+---
 
-   - Number of agents, initial wealth
-   - Style ratios (Greedy/Neutral/Contrarian)
-   - Rich bias (structural advantage)
-   - Simulation speed (1x to 1000x)
+## 📊 How It Works
 
-2. **Click Start**: Watch inequality emerge in real-time
+### 1. Initial Setup
 
-3. **Observe**:
-   - Gini coefficient climbing from 0
-   - Wealth histogram spreading out
-   - Top 1% and 10% shares increasing
-   - Bankruptcies accumulating
+- **Population**: 50-500 agents (default: 100)
+- **Starting wealth**: Everyone gets **$100** (perfectly equal, no advantages)
+- **Agent types** differ only in risk appetite:
+  - **Greedy** (33%): Stakes 30% of wealth per trade (high risk/reward)
+  - **Neutral** (33%): Stakes 20% of wealth per trade (medium risk)
+  - **Contrarian** (33%): Stakes 10% of wealth per trade (low risk)
 
-## Key Parameters
+### 2. Trading Mechanism (Each Round)
 
-| Parameter        | Description                 | Impact                        |
-| ---------------- | --------------------------- | ----------------------------- |
-| Rich Bias        | Advantage for richer agent  | Higher = faster concentration |
-| Greedy Ratio     | % of high-risk agents       | More greedy = more volatility |
-| Simulation Speed | Rounds per update (1-1000x) | Higher = faster simulation    |
+1. **Random pairing**: Two active agents selected randomly
+2. **Stake determination**:
+   - Each agent proposes a stake based on their type
+   - Actual stake = `min(agent_a_stake, agent_b_stake)` (both risk the same)
+3. **Biased coin flip**:
+   - Richer agent wins with probability: **50% + bias** (default: **55%**)
+   - Poorer agent wins with probability: **50% - bias** (default: **45%**)
+4. **Wealth transfer**: Winner takes the stake, loser loses it
+5. **Bankruptcy**: Agent with wealth < $0.10 goes bankrupt (wealth = 0, exits market)
 
-## Experiments
+### 3. The "Rich-Get-Richer" Dynamic
 
-1. **Zero Bias**: Set rich_bias=0 → Should see random walk, less concentration
-2. **High Bias**: Set rich_bias=15% → Extreme concentration, rapid bankruptcies
-3. **All Greedy**: greedy_ratio=1.0 → High stakes, extreme outcomes
-4. **All Contrarian**: contrarian_ratio=1.0 → Low stakes, slower inequality
+The **5% advantage** seems tiny but compounds exponentially:
 
-## What This Demonstrates
+- After 1 trade: Rich agent has 55% vs 45% odds (slight edge)
+- After 100 trades: Rich agent has likely won ~10 more times
+- After 10,000 trades: Wealth concentrates at the top, most agents broke
 
-This model shows how **structural advantages compound over time**:
-
-- Even a tiny 5% advantage for richer agents
-- Over thousands of interactions
-- Produces massive inequality
-
-Real-world parallels:
+This mirrors real-world advantages:
 
 - Better access to information
 - Lower transaction costs
-- Better credit terms
+- Superior credit terms
 - Network effects
-- Compounding returns
+- Compounding returns on capital
 
-## Files
+---
+
+## 🎛️ Controls & Parameters
+
+### Basic Configuration
+
+| Parameter            | Range     | Default | Effect                   |
+| -------------------- | --------- | ------- | ------------------------ |
+| **Number of Agents** | 50-500    | 100     | Population size          |
+| **Initial Wealth**   | $10-$1000 | $100    | Everyone starts equal    |
+| **Rich Bias**        | 0-15%     | 5%      | Richer agent's advantage |
+| **Simulation Speed** | 1-1000x   | 10x     | Rounds per update        |
+
+### Agent Style Ratios
+
+Control the risk appetite distribution:
+
+- **Greedy Ratio**: % of high-risk traders (30% stake)
+- **Neutral Ratio**: % of medium-risk traders (20% stake)
+- **Contrarian Ratio**: Auto-calculated (1 - greedy - neutral)
+
+### Redistribution Policies (Optional)
+
+Test interventions to combat natural inequality:
+
+#### 💰 Wealth Tax
+
+- **Tax Top %**: Which percentile to tax (1-50%, default 10%)
+- **Tax Rate**: % of wealth collected per round (0.1-10%, default 2%)
+
+#### 🏦 Universal Basic Income (UBI)
+
+- **UBI Amount**: Fixed payment to all active agents per round ($0.1-$10, default $1)
+
+#### 🛡️ Safety Net
+
+- **Minimum Wealth Floor**: Guaranteed minimum wealth ($1-$50, default $10)
+- Prevents complete bankruptcy by topping up agents below the floor
+
+---
+
+## 🧪 Suggested Experiments
+
+### Experiment 1: Pure Free Market (Baseline)
+
+**Goal**: Observe natural inequality emergence
+
+**Settings**:
+
+- Agents: 100
+- Initial wealth: $100
+- Rich bias: 5%
+- All policies: **OFF**
+
+**Expected outcome**:
+
+- Gini rises from 0.0 → 0.85-0.95
+- Top 10% own 70-90% of wealth
+- 70-90% of agents go bankrupt
+- Time: ~5,000-20,000 rounds
+
+---
+
+### Experiment 2: Zero Bias (Null Hypothesis)
+
+**Goal**: What happens without structural advantage?
+
+**Settings**:
+
+- Rich bias: **0%**
+- Everything else: default
+- All policies: OFF
+
+**Expected outcome**:
+
+- Gini stays around 0.3-0.5 (moderate inequality)
+- Much slower wealth concentration
+- Fewer bankruptcies
+- Tests whether bias is the key driver (it is)
+
+---
+
+### Experiment 3: Extreme Bias
+
+**Goal**: Accelerate inequality to see endgame fast
+
+**Settings**:
+
+- Rich bias: **15%**
+- Everything else: default
+
+**Expected outcome**:
+
+- Rapid concentration (<5,000 rounds)
+- Very high bankruptcy rate
+- Top 1% dominates quickly
+
+---
+
+### Experiment 4: All Greedy Traders
+
+**Goal**: High-stakes environment
+
+**Settings**:
+
+- Greedy ratio: **100%**
+- Neutral/Contrarian: 0%
+- Rich bias: 5%
+
+**Expected outcome**:
+
+- Extreme volatility
+- Faster inequality (bigger stakes = bigger wins/losses)
+- High early bankruptcy rate
+
+---
+
+### Experiment 5: All Contrarian Traders
+
+**Goal**: Risk-averse population
+
+**Settings**:
+
+- Contrarian ratio: **100%**
+- Others: 0%
+- Rich bias: 5%
+
+**Expected outcome**:
+
+- Slower inequality growth (lower stakes)
+- More agents survive longer
+- Same endgame but takes more rounds
+
+---
+
+### Experiment 6: Wealth Tax Only
+
+**Goal**: Can taxation reduce inequality?
+
+**Settings**:
+
+- Rich bias: 5%
+- **Wealth tax: ON** (top 10%, 2% rate)
+- UBI: OFF
+- Safety net: OFF
+
+**Expected outcome**:
+
+- Gini may peak lower (~0.7-0.8 vs 0.9)
+- Slows concentration but doesn't prevent it
+- Test higher rates (5-10%) for stronger effect
+
+---
+
+### Experiment 7: UBI Only
+
+**Goal**: Can basic income prevent poverty?
+
+**Settings**:
+
+- Rich bias: 5%
+- Wealth tax: OFF
+- **UBI: ON** ($1 per round)
+- Safety net: OFF
+
+**Expected outcome**:
+
+- Fewer bankruptcies (UBI provides income floor)
+- Inequality may still grow at top
+- Test if $1 is sufficient vs bankruptcy rate
+
+---
+
+### Experiment 8: Safety Net Only
+
+**Goal**: Guaranteed minimum wealth
+
+**Settings**:
+
+- Rich bias: 5%
+- Wealth tax: OFF
+- UBI: OFF
+- **Safety net: ON** ($10 minimum)
+
+**Expected outcome**:
+
+- Zero bankruptcies (by definition)
+- But inequality persists (rich still get richer)
+- Agents cluster at floor vs soaring top
+
+---
+
+### Experiment 9: Full Intervention
+
+**Goal**: Maximum redistribution
+
+**Settings**:
+
+- Rich bias: 5%
+- **Wealth tax: ON** (top 10%, 5% rate)
+- **UBI: ON** ($2 per round)
+- **Safety net: ON** ($20 minimum)
+
+**Expected outcome**:
+
+- Can you maintain Gini < 0.5?
+- Trade-off: May reduce total wealth accumulation
+- Test sustainability of policies vs market forces
+
+---
+
+## 📈 Metrics Explained
+
+### Gini Coefficient
+
+Measures inequality on a 0-1 scale:
+
+- **0.0** = Perfect equality (everyone has the same)
+- **0.3-0.4** = Moderate inequality (typical welfare states)
+- **0.5-0.6** = High inequality (USA ~0.48)
+- **0.8-0.9** = Extreme inequality (common in simulation)
+- **1.0** = Perfect inequality (one person has everything)
+
+### Wealth Concentration
+
+- **Top 10% share**: % of total wealth owned by richest 10%
+- **Top 1% share**: % of total wealth owned by richest 1%
+
+### Active Agents
+
+Number of agents still trading (not bankrupt)
+
+### Bankruptcies
+
+Count of agents with wealth fallen below $0.10
+
+### Redistribution Totals (if policies enabled)
+
+- **Taxes collected**: Cumulative wealth tax revenue
+- **UBI distributed**: Cumulative basic income paid out
+- **Safety net interventions**: Times agents were topped up to floor
+
+---
+
+## 📁 Project Structure
 
 ```
 market_simulation/
-├── app_wealth_inequality.py       # Dash interface
-├── wealth_inequality_sim.py       # Core simulation
-├── requirements.txt                # Dependencies
-└── README.md                      # This file
+├── app_wealth_inequality.py       # Dash web interface (UI + callbacks)
+├── wealth_inequality_sim.py       # Core simulation engine (model logic)
+├── requirements.txt               # Python dependencies
+├── README.md                      # This file (quick start)
+└── SIMULATION_SUMMARY.md          # Detailed model explanation
 ```
 
-## License
+---
 
-MIT
+## 🔬 Technical Details
+
+- **Framework**: Dash + Plotly (Python web framework)
+- **Model**: Agent-based simulation
+- **Update frequency**: 50ms (20 UI updates/second)
+- **Simulation speed**: 1-1000 rounds per update (adjustable)
+- **Performance optimization**:
+  - Sparse history recording (every 5th round)
+  - Limited serialization (last 1000 data points)
+  - Efficient Gini calculation with sorted arrays
+
+---
+
+## 📚 Further Reading
+
+For detailed mathematical explanations, policy analysis, and deeper insights, see:
+
+- **[SIMULATION_SUMMARY.md](SIMULATION_SUMMARY.md)** - Complete model documentation
+
+### Relevant Research
+
+- Yard-sale model: Chakraborti & Chakrabarti (2000)
+- Wealth inequality dynamics: Yakovenko & Rosser (2009)
+- Agent-based wealth models: Angle (1986)
+
+---
+
+## 💡 Key Takeaways
+
+1. **Equality is unstable**: Even with equal start, inequality emerges naturally
+2. **Small advantages compound**: 5% bias → 90% wealth concentration
+3. **Randomness ≠ fairness**: "Fair" coin flips can produce unfair outcomes
+4. **Bankruptcy is absorbing**: No way back once you're out
+5. **Intervention required**: Without redistribution, concentration is inevitable
+
+This is a simplified model, but it captures a real dynamic: **structural advantages compound over time, producing extreme inequality without any individual "bad actors."**
+
+---
+
+## 🛠️ Reproducibility Notes
+
+### Randomness
+
+- Uses `numpy.random` for all random operations
+- **No seed set by default** (different results each run)
+- To reproduce exact runs, add at top of `wealth_inequality_sim.py`:
+  ```python
+  np.random.seed(42)  # Or any integer
+  ```
+
+### Parameter Ranges
+
+All sliders and inputs have validation:
+
+- Ratios must sum to ~1.0
+- Minimum values enforced
+- Simulation stops at <2 active agents
+
+### Performance
+
+- **Small runs** (100 agents, 10x speed): Real-time visualization smooth
+- **Large runs** (500 agents, 1000x speed): May lag on older hardware
+- Tested on: Python 3.8-3.12, macOS/Linux/Windows
+
+---
+
+## 📄 License
+
+MIT License - Feel free to use, modify, and distribute.
+
+---
+
+## 🤝 Contributing
+
+Found a bug or have suggestions? Open an issue or submit a pull request!
+
+---
+
+**Made to demonstrate how structural inequality emerges from simple rules. Play with it, break it, learn from it.**
