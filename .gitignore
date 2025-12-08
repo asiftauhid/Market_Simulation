@@ -41,3 +41,13 @@ Thumbs.db
 
 # Environment variables
 .env
+
+# Deployment files
+Dockerfile
+Procfile
+render.yaml
+runtime.txt
+nixpacks.toml
+railway.toml
+railway.json
+DEPLOYMENT.md
