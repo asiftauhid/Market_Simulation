@@ -372,7 +372,7 @@ def control_simulation(start_clicks, stop_clicks, reset_clicks,
     else:
         return (sim_data, False, True, "", False, True, start_enabled_style, stop_disabled_style)
 
-# Display initial simulation state
+# Main update callback - runs on interval tick AND when sim-state changes
 @app.callback(
     [Output('status-bar', 'children'),
      Output('key-metrics', 'children'),
@@ -381,70 +381,61 @@ def control_simulation(start_clicks, stop_clicks, reset_clicks,
      Output('survival-chart', 'figure'),
      Output('concentration-chart', 'figure'),
      Output('results-table', 'children'),
-     Output('interval-component', 'interval')],
-    [Input('sim-state', 'data')]
-)
-def display_simulation(sim_data):
-    """Display current simulation state (runs when sim-state changes)"""
-    if sim_data is None:
-        return create_empty_outputs()
-    
-    try:
-        sim = WealthInequalitySimulation.from_dict(sim_data)
-        results = sim.get_current_results()
-        return create_all_outputs(sim, results, False)
-    except Exception as e:
-        print(f"Error in display_simulation: {e}")
-        import traceback
-        traceback.print_exc()
-        return create_empty_outputs()
-
-# Update simulation on each interval tick
-@app.callback(
-    Output('sim-state', 'data', allow_duplicate=True),
-    [Input('interval-component', 'n_intervals')],
-    [State('sim-state', 'data'),
-     State('running-state', 'data'),
+     Output('interval-component', 'interval'),
+     Output('sim-state', 'data', allow_duplicate=True)],
+    [Input('interval-component', 'n_intervals'),
+     Input('sim-state', 'data')],
+    [State('running-state', 'data'),
      State('speed-multiplier', 'value')],
     prevent_initial_call=True
 )
-def update_simulation_step(n_intervals, sim_data, is_running, speed_multiplier):
-    """Run simulation steps and update state - ONLY updates sim-state, nothing else"""
+def update_simulation(n_intervals, sim_data, is_running, speed_multiplier):
+    """Update simulation and display - triggered by interval OR state changes"""
     
-    # Don't run if not in running state
-    if not is_running or sim_data is None:
-        return sim_data
+    ctx = callback_context
+    if not ctx.triggered:
+        return create_empty_outputs() + (sim_data,)
+    
+    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
     
     try:
+        if sim_data is None:
+            return create_empty_outputs() + (sim_data,)
+        
         # Deserialize simulation
         sim = WealthInequalitySimulation.from_dict(sim_data)
         
-        # Run simulation steps
-        if speed_multiplier is None:
-            speed_multiplier = 1
-        
-        # Cap speed multiplier to prevent UI freezing
-        max_steps = min(int(speed_multiplier), 100)
-        
-        for _ in range(max_steps):
-            can_continue = sim.step()
-            if not can_continue:
-                break
+        # Run simulation steps ONLY if triggered by interval and running
+        if trigger_id == 'interval-component' and is_running:
+            if speed_multiplier is None:
+                speed_multiplier = 1
             
-            # Safety check: if only a few agents left, stop
-            active_count = len([a for a in sim.agents if a.active])
-            if active_count < 2:
-                break
+            # Cap speed multiplier to prevent UI freezing
+            max_steps = min(int(speed_multiplier), 100)
+            
+            for _ in range(max_steps):
+                can_continue = sim.step()
+                if not can_continue:
+                    break
+                
+                # Safety check: if only a few agents left, stop
+                active_count = len([a for a in sim.agents if a.active])
+                if active_count < 2:
+                    break
+            
+            # Serialize back
+            sim_data = sim.to_dict()
         
-        # Serialize and return updated state
-        return sim.to_dict()
+        # Get current results and display
+        results = sim.get_current_results()
+        outputs = create_all_outputs(sim, results, is_running)
+        return outputs + (sim_data,)
     
     except Exception as e:
-        # Log error and return unchanged state
-        print(f"Error in update_simulation_step: {e}")
+        print(f"Error in update_simulation: {e}")
         import traceback
         traceback.print_exc()
-        return sim_data
+        return create_empty_outputs() + (sim_data,)
 
 def create_empty_outputs():
     empty_fig = go.Figure()
