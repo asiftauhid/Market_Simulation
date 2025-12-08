@@ -3,11 +3,10 @@
 **An interactive agent-based model demonstrating how extreme wealth inequality emerges naturally from simple, symmetric trading rules—even when everyone starts with equal wealth.**
 
 ![Python](https://img.shields.io/badge/python-3.8+-blue.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
 
 ---
 
-## 🎯 What This Simulates
+## What This Simulates
 
 This simulation implements the **"yard-sale model"** of wealth exchange, showing a profound economic insight:
 
@@ -20,7 +19,7 @@ This simulation implements the **"yard-sale model"** of wealth exchange, showing
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -51,7 +50,7 @@ http://localhost:8050
 
 ---
 
-## 📊 How It Works
+## How It Works
 
 ### 1. Initial Setup
 
@@ -92,7 +91,7 @@ This mirrors real-world advantages:
 
 ---
 
-## 🎛️ Controls & Parameters
+## Controls & Parameters
 
 ### Basic Configuration
 
@@ -115,23 +114,23 @@ Control the risk appetite distribution:
 
 Test interventions to combat natural inequality:
 
-#### 💰 Wealth Tax
+#### Wealth Tax
 
 - **Tax Top %**: Which percentile to tax (1-50%, default 10%)
 - **Tax Rate**: % of wealth collected per round (0.1-10%, default 2%)
 
-#### 🏦 Universal Basic Income (UBI)
+#### Universal Basic Income (UBI)
 
 - **UBI Amount**: Fixed payment to all active agents per round ($0.1-$10, default $1)
 
-#### 🛡️ Safety Net
+#### Safety Net
 
 - **Minimum Wealth Floor**: Guaranteed minimum wealth ($1-$50, default $10)
 - Prevents complete bankruptcy by topping up agents below the floor
 
 ---
 
-## 🧪 Suggested Experiments
+## Suggested Experiments
 
 ### Experiment 1: Pure Free Market (Baseline)
 
@@ -347,7 +346,7 @@ market_simulation/
 
 ---
 
-## 🔬 Technical Details
+## Technical Details
 
 - **Framework**: Dash + Plotly (Python web framework)
 - **Model**: Agent-based simulation
@@ -360,7 +359,7 @@ market_simulation/
 
 ---
 
-## 📚 Further Reading
+## Further Reading
 
 For detailed mathematical explanations, policy analysis, and deeper insights, see:
 
@@ -374,7 +373,7 @@ For detailed mathematical explanations, policy analysis, and deeper insights, se
 
 ---
 
-## 💡 Key Takeaways
+## Key Takeaways
 
 1. **Equality is unstable**: Even with equal start, inequality emerges naturally
 2. **Small advantages compound**: 5% bias → 90% wealth concentration
@@ -386,7 +385,7 @@ This is a simplified model, but it captures a real dynamic: **structural advanta
 
 ---
 
-## 🛠️ Reproducibility Notes
+## Reproducibility Notes
 
 ### Randomness
 
@@ -413,13 +412,7 @@ All sliders and inputs have validation:
 
 ---
 
-## 📄 License
-
-MIT License - Feel free to use, modify, and distribute.
-
----
-
-## 🤝 Contributing
+## Contributing
 
 Found a bug or have suggestions? Open an issue or submit a pull request!
 
