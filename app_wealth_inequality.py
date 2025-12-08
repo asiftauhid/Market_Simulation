@@ -10,10 +10,6 @@ from wealth_inequality_sim import WealthInequalitySimulation, AgentStyle
 app = dash.Dash(__name__, suppress_callback_exceptions=True)
 app.title = "Wealth Inequality Emergence"
 
-# Global simulation state
-sim_instance = None
-sim_initialized = False
-
 # App layout
 app.layout = html.Div([
     # Store components
@@ -265,11 +261,10 @@ def update_contrarian(greedy, neutral):
 def control_simulation(start_clicks, stop_clicks, reset_clicks,
                        n_agents, initial_wealth, greedy_ratio, neutral_ratio,
                        rich_bias, speed_multiplier,
-                       wealth_tax_enabled, wealth_tax_threshold, wealth_tax_rate,
-                       ubi_enabled, ubi_amount,
-                       safety_net_enabled, safety_net_floor,
+                       wealth_tax_enabled_list, wealth_tax_threshold, wealth_tax_rate,
+                       ubi_enabled_list, ubi_amount,
+                       safety_net_enabled_list, safety_net_floor,
                        sim_data, is_running):
-    global sim_instance, sim_initialized
     
     # Define button styles
     start_enabled_style = {
@@ -293,28 +288,32 @@ def control_simulation(start_clicks, stop_clicks, reset_clicks,
         'borderRadius': '4px', 'cursor': 'not-allowed', 'marginRight': '10px', 'opacity': '0.6'
     }
     
+    # Helper to convert checklist values
+    wealth_tax_enabled = True if wealth_tax_enabled_list else False
+    ubi_enabled = True if ubi_enabled_list else False
+    safety_net_enabled = True if safety_net_enabled_list else False
+    
     ctx = callback_context
     if not ctx.triggered:
         if greedy_ratio + neutral_ratio > 1.0:
             return (None, False, True, "Error: Greedy + Neutral ratios cannot exceed 1.0!", 
                     False, True, start_enabled_style, stop_disabled_style)
         
-        sim_data = {
-            'params': {
-                'n_agents': n_agents, 'initial_wealth': initial_wealth,
-                'greedy_ratio': greedy_ratio, 'neutral_ratio': neutral_ratio,
-                'rich_bias': rich_bias,
-                'wealth_tax_enabled': 'enabled' in (wealth_tax_enabled or []),
-                'wealth_tax_threshold': wealth_tax_threshold,
-                'wealth_tax_rate': wealth_tax_rate,
-                'ubi_enabled': 'enabled' in (ubi_enabled or []),
-                'ubi_amount': ubi_amount,
-                'safety_net_enabled': 'enabled' in (safety_net_enabled or []),
-                'safety_net_floor': safety_net_floor,
-            },
-            'initialized': True
-        }
-        sim_initialized = False
+        # Initialize new simulation
+        sim = WealthInequalitySimulation(
+            n_agents=n_agents, initial_wealth=initial_wealth,
+            greedy_ratio=greedy_ratio, neutral_ratio=neutral_ratio,
+            rich_bias=rich_bias,
+            wealth_tax_enabled=wealth_tax_enabled,
+            wealth_tax_threshold=wealth_tax_threshold,
+            wealth_tax_rate=wealth_tax_rate,
+            ubi_enabled=ubi_enabled,
+            ubi_amount=ubi_amount,
+            safety_net_enabled=safety_net_enabled,
+            safety_net_floor=safety_net_floor,
+        )
+        sim.reset()
+        sim_data = sim.to_dict()
         return (sim_data, False, True, "", False, True, start_enabled_style, stop_disabled_style)
     
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
@@ -325,22 +324,21 @@ def control_simulation(start_clicks, stop_clicks, reset_clicks,
                     False, True, start_enabled_style, stop_disabled_style)
         
         if sim_data is None:
-            sim_data = {
-                'params': {
-                    'n_agents': n_agents, 'initial_wealth': initial_wealth,
-                    'greedy_ratio': greedy_ratio, 'neutral_ratio': neutral_ratio,
-                    'rich_bias': rich_bias,
-                    'wealth_tax_enabled': 'enabled' in (wealth_tax_enabled or []),
-                    'wealth_tax_threshold': wealth_tax_threshold,
-                    'wealth_tax_rate': wealth_tax_rate,
-                    'ubi_enabled': 'enabled' in (ubi_enabled or []),
-                    'ubi_amount': ubi_amount,
-                    'safety_net_enabled': 'enabled' in (safety_net_enabled or []),
-                    'safety_net_floor': safety_net_floor,
-                },
-                'initialized': True
-            }
-            sim_initialized = False
+            # Initialize new simulation
+            sim = WealthInequalitySimulation(
+                n_agents=n_agents, initial_wealth=initial_wealth,
+                greedy_ratio=greedy_ratio, neutral_ratio=neutral_ratio,
+                rich_bias=rich_bias,
+                wealth_tax_enabled=wealth_tax_enabled,
+                wealth_tax_threshold=wealth_tax_threshold,
+                wealth_tax_rate=wealth_tax_rate,
+                ubi_enabled=ubi_enabled,
+                ubi_amount=ubi_amount,
+                safety_net_enabled=safety_net_enabled,
+                safety_net_floor=safety_net_floor,
+            )
+            sim.reset()
+            sim_data = sim.to_dict()
         
         # Start simulation: disable Start (dark green), enable Stop (red)
         return (sim_data, True, False, "", True, False, start_disabled_style, stop_enabled_style)
@@ -350,23 +348,21 @@ def control_simulation(start_clicks, stop_clicks, reset_clicks,
         return (sim_data, False, True, "", False, True, start_enabled_style, stop_disabled_style)
     
     elif button_id == 'reset-btn':
-        sim_data = {
-            'params': {
-                'n_agents': n_agents, 'initial_wealth': initial_wealth,
-                'greedy_ratio': greedy_ratio, 'neutral_ratio': neutral_ratio,
-                'rich_bias': rich_bias,
-                'wealth_tax_enabled': 'enabled' in (wealth_tax_enabled or []),
-                'wealth_tax_threshold': wealth_tax_threshold,
-                'wealth_tax_rate': wealth_tax_rate,
-                'ubi_enabled': 'enabled' in (ubi_enabled or []),
-                'ubi_amount': ubi_amount,
-                'safety_net_enabled': 'enabled' in (safety_net_enabled or []),
-                'safety_net_floor': safety_net_floor,
-            },
-            'initialized': True
-        }
-        sim_instance = None
-        sim_initialized = False
+        # Initialize new simulation
+        sim = WealthInequalitySimulation(
+            n_agents=n_agents, initial_wealth=initial_wealth,
+            greedy_ratio=greedy_ratio, neutral_ratio=neutral_ratio,
+            rich_bias=rich_bias,
+            wealth_tax_enabled=wealth_tax_enabled,
+            wealth_tax_threshold=wealth_tax_threshold,
+            wealth_tax_rate=wealth_tax_rate,
+            ubi_enabled=ubi_enabled,
+            ubi_amount=ubi_amount,
+            safety_net_enabled=safety_net_enabled,
+            safety_net_floor=safety_net_floor,
+        )
+        sim.reset()
+        sim_data = sim.to_dict()
         # Reset: enable Start (green), disable Stop (gray)
         return (sim_data, False, True, "", False, True, start_enabled_style, stop_disabled_style)
     
@@ -384,73 +380,99 @@ def control_simulation(start_clicks, stop_clicks, reset_clicks,
      Output('survival-chart', 'figure'),
      Output('concentration-chart', 'figure'),
      Output('results-table', 'children'),
-     Output('interval-component', 'interval')],
+     Output('interval-component', 'interval'),
+     Output('sim-state', 'data', allow_duplicate=True),
+     Output('running-state', 'data', allow_duplicate=True),
+     Output('interval-component', 'disabled', allow_duplicate=True),
+     Output('start-btn', 'disabled', allow_duplicate=True),
+     Output('stop-btn', 'disabled', allow_duplicate=True),
+     Output('start-btn', 'style', allow_duplicate=True),
+     Output('stop-btn', 'style', allow_duplicate=True)],
     [Input('interval-component', 'n_intervals'),
      Input('sim-state', 'data'),
      Input('running-state', 'data')],
-    [State('speed-multiplier', 'value')]
+    [State('speed-multiplier', 'value')],
+    prevent_initial_call=True
 )
 def update_charts(n_intervals, sim_data, is_running, speed_multiplier):
-    global sim_instance, sim_initialized
+    # Button styles for auto-stop
+    start_enabled_style = {
+        'width': '120px', 'padding': '10px 20px', 'fontSize': '14px', 'fontWeight': '500',
+        'backgroundColor': '#27ae60', 'color': 'white', 'border': 'none',
+        'borderRadius': '4px', 'cursor': 'pointer', 'marginRight': '10px'
+    }
+    stop_disabled_style = {
+        'width': '120px', 'padding': '10px 20px', 'fontSize': '14px', 'fontWeight': '500',
+        'backgroundColor': '#95a5a6', 'color': '#cccccc', 'border': 'none',
+        'borderRadius': '4px', 'cursor': 'not-allowed', 'marginRight': '10px', 'opacity': '0.6'
+    }
+    start_disabled_style = {
+        'width': '120px', 'padding': '10px 20px', 'fontSize': '14px', 'fontWeight': '500',
+        'backgroundColor': '#1e7e34', 'color': '#cccccc', 'border': 'none',
+        'borderRadius': '4px', 'cursor': 'not-allowed', 'marginRight': '10px', 'opacity': '0.7'
+    }
+    stop_enabled_style = {
+        'width': '120px', 'padding': '10px 20px', 'fontSize': '14px', 'fontWeight': '500',
+        'backgroundColor': '#e74c3c', 'color': 'white', 'border': 'none',
+        'borderRadius': '4px', 'cursor': 'pointer', 'marginRight': '10px'
+    }
     
     try:
-        # Initialize simulation if needed
-        if sim_data is not None and (sim_instance is None or not sim_initialized):
-            params = sim_data['params']
-            sim_instance = WealthInequalitySimulation(
-                n_agents=params['n_agents'],
-                initial_wealth=params['initial_wealth'],
-                greedy_ratio=params['greedy_ratio'],
-                neutral_ratio=params['neutral_ratio'],
-                rich_bias=params['rich_bias'],
-                wealth_tax_enabled=params.get('wealth_tax_enabled', False),
-                wealth_tax_threshold=params.get('wealth_tax_threshold', 0.10),
-                wealth_tax_rate=params.get('wealth_tax_rate', 0.02),
-                ubi_enabled=params.get('ubi_enabled', False),
-                ubi_amount=params.get('ubi_amount', 1.0),
-                safety_net_enabled=params.get('safety_net_enabled', False),
-                safety_net_floor=params.get('safety_net_floor', 10.0),
-            )
-            sim_instance.reset()
-            sim_initialized = True
+        if sim_data is None:
+            outputs = create_empty_outputs()
+            return outputs + (sim_data, False, True, False, True, start_enabled_style, stop_disabled_style)
         
-        if sim_instance is None:
-            return create_empty_outputs()
+        # Deserialize simulation
+        sim = WealthInequalitySimulation.from_dict(sim_data)
         
         # Run simulation step if running
+        simulation_should_stop = False
         if is_running and n_intervals is not None and n_intervals > 0:
             # Run multiple steps based on speed multiplier
             if speed_multiplier is None:
                 speed_multiplier = 1
             
-            # Cap speed multiplier to prevent UI freezing - keep UI responsive
-            # Max 100 steps per callback for smooth updates
+            # Cap speed multiplier to prevent UI freezing
             max_steps = min(int(speed_multiplier), 100)
             
             for _ in range(max_steps):
-                can_continue = sim_instance.step()
+                can_continue = sim.step()
                 if not can_continue:
+                    simulation_should_stop = True
                     break
                 
                 # Safety check: if only a few agents left, slow down
-                active_count = len([a for a in sim_instance.agents if a.active])
+                active_count = len([a for a in sim.agents if a.active])
                 if active_count < 2:
+                    simulation_should_stop = True
                     break
         
         # Get current results
-        results = sim_instance.get_current_results()
+        results = sim.get_current_results()
+        
+        # Serialize back
+        sim_data = sim.to_dict()
         
         # Create all outputs
-        return create_all_outputs(sim_instance, results, is_running)
+        outputs = create_all_outputs(sim, results, is_running and not simulation_should_stop)
+        
+        # Auto-stop if simulation is complete
+        if simulation_should_stop:
+            return outputs + (sim_data, False, True, False, True, start_enabled_style, stop_disabled_style)
+        else:
+            # Keep current button states
+            if is_running:
+                return outputs + (sim_data, True, False, True, False, start_disabled_style, stop_enabled_style)
+            else:
+                return outputs + (sim_data, False, True, False, True, start_enabled_style, stop_disabled_style)
     
     except Exception as e:
         # Log error and reset simulation to recover
         print(f"Error in update_charts: {e}")
         import traceback
         traceback.print_exc()
-        sim_instance = None
-        sim_initialized = False
-        return create_empty_outputs()
+        outputs = create_empty_outputs()
+        return outputs + (None, False, True, False, True, start_enabled_style, stop_disabled_style)
 
 def create_empty_outputs():
     empty_fig = go.Figure()

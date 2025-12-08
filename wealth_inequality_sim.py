@@ -45,6 +45,8 @@ class WealthInequalitySimulation:
         ubi_amount: float = 1.0,  # Fixed amount per agent per round
         safety_net_enabled: bool = False,
         safety_net_floor: float = 10.0,  # Minimum wealth floor
+        # For deserialization
+        _skip_init: bool = False
     ):
         self.n_agents = n_agents
         self.initial_wealth = initial_wealth
@@ -77,7 +79,11 @@ class WealthInequalitySimulation:
         self.total_ubi_distributed: float = 0.0
         self.safety_net_interventions: int = 0
         
-        self._initialize_agents()
+        # Stats recording interval
+        self.stats_record_interval = 5
+        
+        if not _skip_init:
+            self._initialize_agents()
         
     def _initialize_agents(self):
         """Create initial agent population - everyone starts equal"""
@@ -383,4 +389,77 @@ class WealthInequalitySimulation:
             'total_ubi_distributed': self.total_ubi_distributed,
             'safety_net_interventions': self.safety_net_interventions,
         }
+    
+    def to_dict(self) -> dict:
+        """Serialize simulation state to dictionary for storage"""
+        return {
+            # Parameters
+            'n_agents': self.n_agents,
+            'initial_wealth': self.initial_wealth,
+            'greedy_ratio': self.greedy_ratio,
+            'neutral_ratio': self.neutral_ratio,
+            'rich_bias': self.rich_bias,
+            'min_wealth': self.min_wealth,
+            'wealth_tax_enabled': self.wealth_tax_enabled,
+            'wealth_tax_threshold': self.wealth_tax_threshold,
+            'wealth_tax_rate': self.wealth_tax_rate,
+            'ubi_enabled': self.ubi_enabled,
+            'ubi_amount': self.ubi_amount,
+            'safety_net_enabled': self.safety_net_enabled,
+            'safety_net_floor': self.safety_net_floor,
+            # State
+            'agents': [{'id': a.id, 'style': a.style.value, 'wealth': a.wealth, 'active': a.active} 
+                      for a in self.agents],
+            'wealth_history': self.wealth_history,
+            'gini_history': self.gini_history,
+            'active_count_history': self.active_count_history,
+            'top_10_percent_history': self.top_10_percent_history,
+            'top_1_percent_history': self.top_1_percent_history,
+            'current_round': self.current_round,
+            'total_taxes_collected': self.total_taxes_collected,
+            'total_ubi_distributed': self.total_ubi_distributed,
+            'safety_net_interventions': self.safety_net_interventions,
+        }
+    
+    @classmethod
+    def from_dict(cls, data: dict) -> 'WealthInequalitySimulation':
+        """Deserialize simulation state from dictionary"""
+        # Create instance without initialization
+        sim = cls(
+            n_agents=data['n_agents'],
+            initial_wealth=data['initial_wealth'],
+            greedy_ratio=data['greedy_ratio'],
+            neutral_ratio=data['neutral_ratio'],
+            rich_bias=data['rich_bias'],
+            min_wealth=data['min_wealth'],
+            wealth_tax_enabled=data['wealth_tax_enabled'],
+            wealth_tax_threshold=data['wealth_tax_threshold'],
+            wealth_tax_rate=data['wealth_tax_rate'],
+            ubi_enabled=data['ubi_enabled'],
+            ubi_amount=data['ubi_amount'],
+            safety_net_enabled=data['safety_net_enabled'],
+            safety_net_floor=data['safety_net_floor'],
+            _skip_init=True
+        )
+        
+        # Restore agents
+        sim.agents = [Agent(
+            id=a['id'],
+            style=AgentStyle(a['style']),
+            wealth=a['wealth'],
+            active=a['active']
+        ) for a in data['agents']]
+        
+        # Restore history
+        sim.wealth_history = data['wealth_history']
+        sim.gini_history = data['gini_history']
+        sim.active_count_history = data['active_count_history']
+        sim.top_10_percent_history = data['top_10_percent_history']
+        sim.top_1_percent_history = data['top_1_percent_history']
+        sim.current_round = data['current_round']
+        sim.total_taxes_collected = data['total_taxes_collected']
+        sim.total_ubi_distributed = data['total_ubi_distributed']
+        sim.safety_net_interventions = data['safety_net_interventions']
+        
+        return sim
 
