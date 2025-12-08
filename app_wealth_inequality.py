@@ -655,11 +655,10 @@ if __name__ == '__main__':
     import os
     # Use PORT environment variable for deployment
     port = int(os.environ.get('PORT', 8050))
+    debug = os.environ.get('DEBUG', 'False').lower() == 'true'
     
-    # For local development with waitress
-    from waitress import serve
-    print(f"Starting server on port {port}...")
-    serve(app.server, host='0.0.0.0', port=port, threads=4)
+    print(f"Starting Dash app on port {port}...")
+    app.run(debug=debug, host='0.0.0.0', port=port, threaded=True)
 
 # Expose server for WSGI servers
 server = app.server
