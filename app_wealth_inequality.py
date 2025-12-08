@@ -401,13 +401,7 @@ def display_simulation(sim_data):
 
 # Update simulation on each interval tick
 @app.callback(
-    [Output('sim-state', 'data', allow_duplicate=True),
-     Output('running-state', 'data', allow_duplicate=True),
-     Output('interval-component', 'disabled', allow_duplicate=True),
-     Output('start-btn', 'disabled', allow_duplicate=True),
-     Output('stop-btn', 'disabled', allow_duplicate=True),
-     Output('start-btn', 'style', allow_duplicate=True),
-     Output('stop-btn', 'style', allow_duplicate=True)],
+    Output('sim-state', 'data', allow_duplicate=True),
     [Input('interval-component', 'n_intervals')],
     [State('sim-state', 'data'),
      State('running-state', 'data'),
@@ -415,42 +409,17 @@ def display_simulation(sim_data):
     prevent_initial_call=True
 )
 def update_simulation_step(n_intervals, sim_data, is_running, speed_multiplier):
-    """Run simulation steps and update state"""
-    # Button styles
-    start_enabled_style = {
-        'width': '120px', 'padding': '10px 20px', 'fontSize': '14px', 'fontWeight': '500',
-        'backgroundColor': '#27ae60', 'color': 'white', 'border': 'none',
-        'borderRadius': '4px', 'cursor': 'pointer', 'marginRight': '10px'
-    }
-    stop_disabled_style = {
-        'width': '120px', 'padding': '10px 20px', 'fontSize': '14px', 'fontWeight': '500',
-        'backgroundColor': '#95a5a6', 'color': '#cccccc', 'border': 'none',
-        'borderRadius': '4px', 'cursor': 'not-allowed', 'marginRight': '10px', 'opacity': '0.6'
-    }
-    start_disabled_style = {
-        'width': '120px', 'padding': '10px 20px', 'fontSize': '14px', 'fontWeight': '500',
-        'backgroundColor': '#1e7e34', 'color': '#cccccc', 'border': 'none',
-        'borderRadius': '4px', 'cursor': 'not-allowed', 'marginRight': '10px', 'opacity': '0.7'
-    }
-    stop_enabled_style = {
-        'width': '120px', 'padding': '10px 20px', 'fontSize': '14px', 'fontWeight': '500',
-        'backgroundColor': '#e74c3c', 'color': 'white', 'border': 'none',
-        'borderRadius': '4px', 'cursor': 'pointer', 'marginRight': '10px'
-    }
+    """Run simulation steps and update state - ONLY updates sim-state, nothing else"""
+    
+    # Don't run if not in running state
+    if not is_running or sim_data is None:
+        return sim_data
     
     try:
-        if sim_data is None or not is_running:
-            # Not running - keep current state
-            if is_running:
-                return (sim_data, True, False, True, False, start_disabled_style, stop_enabled_style)
-            else:
-                return (sim_data, False, True, False, True, start_enabled_style, stop_disabled_style)
-        
         # Deserialize simulation
         sim = WealthInequalitySimulation.from_dict(sim_data)
         
         # Run simulation steps
-        simulation_should_stop = False
         if speed_multiplier is None:
             speed_multiplier = 1
         
@@ -460,31 +429,22 @@ def update_simulation_step(n_intervals, sim_data, is_running, speed_multiplier):
         for _ in range(max_steps):
             can_continue = sim.step()
             if not can_continue:
-                simulation_should_stop = True
                 break
             
-            # Safety check: if only a few agents left, slow down
+            # Safety check: if only a few agents left, stop
             active_count = len([a for a in sim.agents if a.active])
             if active_count < 2:
-                simulation_should_stop = True
                 break
         
-        # Serialize back
-        sim_data = sim.to_dict()
-        
-        # Auto-stop if simulation is complete
-        if simulation_should_stop:
-            return (sim_data, False, True, False, True, start_enabled_style, stop_disabled_style)
-        else:
-            # Keep running
-            return (sim_data, True, False, True, False, start_disabled_style, stop_enabled_style)
+        # Serialize and return updated state
+        return sim.to_dict()
     
     except Exception as e:
-        # Log error and reset simulation to recover
+        # Log error and return unchanged state
         print(f"Error in update_simulation_step: {e}")
         import traceback
         traceback.print_exc()
-        return (None, False, True, False, True, start_enabled_style, stop_disabled_style)
+        return sim_data
 
 def create_empty_outputs():
     empty_fig = go.Figure()
