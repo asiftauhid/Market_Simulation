@@ -12,28 +12,27 @@ app = dash.Dash(__name__, suppress_callback_exceptions=True)
 app.title = "Wealth Inequality Emergence"
 
 # Server-side simulation storage (keyed by session ID)
-# This avoids serialization overhead - only session ID is passed to client
 SIMULATIONS = {}
+RUNNING_STATE = {}  # Also store running state server-side
 
 def get_sim(session_id):
-    """Get simulation for session"""
     return SIMULATIONS.get(session_id)
 
 def set_sim(session_id, sim):
-    """Store simulation for session"""
     SIMULATIONS[session_id] = sim
 
-def delete_sim(session_id):
-    """Delete simulation for session"""
-    if session_id in SIMULATIONS:
-        del SIMULATIONS[session_id]
+def is_running(session_id):
+    return RUNNING_STATE.get(session_id, False)
+
+def set_running(session_id, running):
+    RUNNING_STATE[session_id] = running
 
 # App layout
 app.layout = html.Div([
-    # Store components - only stores session ID and running state (tiny payload)
+    # Store only session ID - everything else is server-side
     dcc.Store(id='session-id', data=str(uuid.uuid4())),
-    dcc.Store(id='running-state', data=False),
-    dcc.Interval(id='interval-component', interval=100, disabled=True),  # 100ms interval
+    dcc.Store(id='tick-trigger', data=0),  # Just a counter to trigger updates
+    dcc.Interval(id='interval-component', interval=100, n_intervals=0),  # Always enabled!
     
     # Header
     html.Div([
@@ -249,13 +248,12 @@ def update_contrarian(greedy, neutral):
     return f"Contrarian Ratio: {contrarian:.2f}"
 
 @app.callback(
-    [Output('running-state', 'data'),
-     Output('interval-component', 'disabled'),
-     Output('validation-message', 'children'),
+    [Output('validation-message', 'children'),
      Output('start-btn', 'disabled'),
      Output('stop-btn', 'disabled'),
      Output('start-btn', 'style'),
-     Output('stop-btn', 'style')],
+     Output('stop-btn', 'style'),
+     Output('tick-trigger', 'data')],
     [Input('start-btn', 'n_clicks'),
      Input('stop-btn', 'n_clicks'),
      Input('reset-btn', 'n_clicks')],
@@ -272,7 +270,7 @@ def update_contrarian(greedy, neutral):
      State('ubi-amount', 'value'),
      State('safety-net-enabled', 'value'),
      State('safety-net-floor', 'value'),
-     State('running-state', 'data')]
+     State('tick-trigger', 'data')]
 )
 def control_simulation(start_clicks, stop_clicks, reset_clicks,
                        session_id, n_agents, initial_wealth, greedy_ratio, neutral_ratio,
@@ -280,7 +278,7 @@ def control_simulation(start_clicks, stop_clicks, reset_clicks,
                        wealth_tax_enabled_list, wealth_tax_threshold, wealth_tax_rate,
                        ubi_enabled_list, ubi_amount,
                        safety_net_enabled_list, safety_net_floor,
-                       is_running):
+                       tick):
     
     # Define button styles
     start_enabled_style = {
@@ -328,43 +326,51 @@ def control_simulation(start_clicks, stop_clicks, reset_clicks,
     ctx = callback_context
     if not ctx.triggered:
         if greedy_ratio + neutral_ratio > 1.0:
-            return (False, True, "Error: Greedy + Neutral ratios cannot exceed 1.0!", 
-                    False, True, start_enabled_style, stop_disabled_style)
+            return ("Error: Greedy + Neutral ratios cannot exceed 1.0!", 
+                    False, True, start_enabled_style, stop_disabled_style, tick or 0)
         
-        # Initialize simulation in server memory
+        # Initialize simulation and set not running
         set_sim(session_id, create_sim())
-        return (False, True, "", False, True, start_enabled_style, stop_disabled_style)
+        set_running(session_id, False)
+        return ("", False, True, start_enabled_style, stop_disabled_style, tick or 0)
     
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
     
     if button_id == 'start-btn':
         if greedy_ratio + neutral_ratio > 1.0:
-            return (False, True, "Error: Greedy + Neutral ratios cannot exceed 1.0!", 
-                    False, True, start_enabled_style, stop_disabled_style)
+            return ("Error: Greedy + Neutral ratios cannot exceed 1.0!", 
+                    False, True, start_enabled_style, stop_disabled_style, tick or 0)
         
         # Create simulation if not exists
         if get_sim(session_id) is None:
             set_sim(session_id, create_sim())
         
-        # Start: disable Start, enable Stop, enable interval
-        return (True, False, "", True, False, start_disabled_style, stop_enabled_style)
+        # Set running state SERVER-SIDE
+        set_running(session_id, True)
+        print(f"[{session_id[:8]}] START - Running set to True", flush=True)
+        return ("", True, False, start_disabled_style, stop_enabled_style, (tick or 0) + 1)
     
     elif button_id == 'stop-btn':
-        # Stop: enable Start, disable Stop, disable interval
-        return (False, True, "", False, True, start_enabled_style, stop_disabled_style)
+        # Set running state SERVER-SIDE
+        set_running(session_id, False)
+        print(f"[{session_id[:8]}] STOP - Running set to False", flush=True)
+        return ("", False, True, start_enabled_style, stop_disabled_style, (tick or 0) + 1)
     
     elif button_id == 'reset-btn':
-        # Reset simulation in server memory
+        # Reset simulation and stop
         set_sim(session_id, create_sim())
-        return (False, True, "", False, True, start_enabled_style, stop_disabled_style)
+        set_running(session_id, False)
+        print(f"[{session_id[:8]}] RESET", flush=True)
+        return ("", False, True, start_enabled_style, stop_disabled_style, (tick or 0) + 1)
     
-    # Default
-    if is_running:
-        return (True, False, "", True, False, start_disabled_style, stop_enabled_style)
+    # Default based on server-side state
+    running = is_running(session_id)
+    if running:
+        return ("", True, False, start_disabled_style, stop_enabled_style, tick or 0)
     else:
-        return (False, True, "", False, True, start_enabled_style, stop_disabled_style)
+        return ("", False, True, start_enabled_style, stop_disabled_style, tick or 0)
 
-# Main update callback - runs on interval tick
+# Main update callback - runs on EVERY interval tick (interval always enabled)
 @app.callback(
     [Output('status-bar', 'children'),
      Output('key-metrics', 'children'),
@@ -374,45 +380,43 @@ def control_simulation(start_clicks, stop_clicks, reset_clicks,
      Output('concentration-chart', 'figure'),
      Output('results-table', 'children'),
      Output('interval-component', 'interval')],
-    [Input('interval-component', 'n_intervals')],
+    [Input('interval-component', 'n_intervals'),
+     Input('tick-trigger', 'data')],
     [State('session-id', 'data'),
-     State('running-state', 'data'),
      State('speed-multiplier', 'value')]
 )
-def update_simulation(n_intervals, session_id, is_running, speed_multiplier):
-    """Update simulation and display - triggered by interval"""
-    import sys
+def update_simulation(n_intervals, tick_trigger, session_id, speed_multiplier):
+    """Update simulation and display - triggered by interval OR tick-trigger"""
     
     try:
         sim = get_sim(session_id)
         if sim is None:
             return create_empty_outputs()
         
+        # Check SERVER-SIDE running state
+        running = is_running(session_id)
+        
         # Run simulation steps if running
-        if is_running:
+        if running:
             if speed_multiplier is None:
                 speed_multiplier = 1
             
-            # Use actual speed multiplier value
             max_steps = max(1, int(speed_multiplier))
             
             for _ in range(max_steps):
                 can_continue = sim.step()
                 if not can_continue:
+                    set_running(session_id, False)  # Auto-stop when done
                     break
                 
                 active_count = len([a for a in sim.agents if a.active])
                 if active_count < 2:
+                    set_running(session_id, False)  # Auto-stop
                     break
-            
-            # Flush output to ensure logs appear immediately
-            if sim.current_round % 50 == 0:
-                print(f"Round {sim.current_round}, Active: {active_count}", flush=True)
-                sys.stdout.flush()
         
         # Get current results and display
         results = sim.get_current_results()
-        return create_all_outputs(sim, results, is_running)
+        return create_all_outputs(sim, results, running)
     
     except Exception as e:
         print(f"Error in update_simulation: {e}", flush=True)
