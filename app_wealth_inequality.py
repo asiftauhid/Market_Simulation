@@ -234,6 +234,12 @@ app.layout = html.Div([
         # Results table
         html.Div(id='results-table', style={'marginBottom': '15px', 'marginTop': '15px'}),
         
+        # Debug counter to verify updates are happening
+        html.Div(id='debug-counter', style={'padding': '10px', 'backgroundColor': '#f39c12', 
+                                            'color': 'white', 'textAlign': 'center',
+                                            'marginTop': '10px', 'borderRadius': '4px',
+                                            'fontSize': '16px', 'fontWeight': 'bold'}),
+        
     ], style={'padding': '0 20px'}),
 ])
 
@@ -379,7 +385,8 @@ def control_simulation(start_clicks, stop_clicks, reset_clicks,
      Output('survival-chart', 'figure'),
      Output('concentration-chart', 'figure'),
      Output('results-table', 'children'),
-     Output('interval-component', 'interval')],
+     Output('interval-component', 'interval'),
+     Output('debug-counter', 'children')],
     [Input('interval-component', 'n_intervals'),
      Input('tick-trigger', 'data')],
     [State('session-id', 'data'),
@@ -416,7 +423,9 @@ def update_simulation(n_intervals, tick_trigger, session_id, speed_multiplier):
         
         # Get current results and display
         results = sim.get_current_results()
-        return create_all_outputs(sim, results, running)
+        outputs = create_all_outputs(sim, results, running)
+        # Add debug counter showing n_intervals
+        return outputs + (f"Callback #{n_intervals} | Round: {sim.current_round}",)
     
     except Exception as e:
         print(f"Error in update_simulation: {e}", flush=True)
@@ -436,7 +445,8 @@ def create_empty_outputs():
         html.Div("No data yet", style={'textAlign': 'center', 'color': '#7f8c8d'}),
         empty_fig, empty_fig, empty_fig, empty_fig,
         html.Div("No data yet", style={'textAlign': 'center', 'color': '#7f8c8d'}),
-        100
+        100,
+        "Waiting..."
     )
 
 def create_all_outputs(sim, results, is_running):
