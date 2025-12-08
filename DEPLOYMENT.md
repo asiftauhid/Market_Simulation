@@ -1,6 +1,40 @@
 # Deployment Guide
 
-## Quick Deploy to Render (Recommended - Free)
+## 🚀 Quick Deploy to Railway (Recommended - Best for Dash Apps)
+
+### Why Railway?
+- Works perfectly with Dash applications
+- Fast deployment (2 minutes)
+- $5 free credit/month (~500 hours)
+- No cold starts, better performance
+- Auto-detects your Procfile
+
+### Steps
+
+1. **Go to Railway**
+   - Visit [railway.app](https://railway.app)
+   - Sign in with your GitHub account
+
+2. **Deploy**
+   - Click **"New Project"**
+   - Select **"Deploy from GitHub repo"**
+   - Choose **`Market_Simulation`** from the list
+   - Railway auto-detects Python and starts deploying
+
+3. **Configure (Auto-detected)**
+   - Railway automatically uses your `Procfile`
+   - Python version from `runtime.txt`
+   - Dependencies from `requirements.txt`
+
+4. **Get Your URL**
+   - Click "Settings" → "Networking" → "Generate Domain"
+   - Your app will be live at: `https://market-simulation.up.railway.app`
+
+**That's it!** Railway handles everything automatically.
+
+---
+
+## Alternative: Deploy to Render (Free)
 
 ### Prerequisites
 
