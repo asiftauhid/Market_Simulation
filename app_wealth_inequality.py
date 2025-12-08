@@ -372,6 +372,7 @@ def control_simulation(start_clicks, stop_clicks, reset_clicks,
     else:
         return (sim_data, False, True, "", False, True, start_enabled_style, stop_disabled_style)
 
+# Display initial simulation state
 @app.callback(
     [Output('status-bar', 'children'),
      Output('key-metrics', 'children'),
@@ -380,22 +381,42 @@ def control_simulation(start_clicks, stop_clicks, reset_clicks,
      Output('survival-chart', 'figure'),
      Output('concentration-chart', 'figure'),
      Output('results-table', 'children'),
-     Output('interval-component', 'interval'),
-     Output('sim-state', 'data', allow_duplicate=True),
+     Output('interval-component', 'interval')],
+    [Input('sim-state', 'data')]
+)
+def display_simulation(sim_data):
+    """Display current simulation state (runs when sim-state changes)"""
+    if sim_data is None:
+        return create_empty_outputs()
+    
+    try:
+        sim = WealthInequalitySimulation.from_dict(sim_data)
+        results = sim.get_current_results()
+        return create_all_outputs(sim, results, False)
+    except Exception as e:
+        print(f"Error in display_simulation: {e}")
+        import traceback
+        traceback.print_exc()
+        return create_empty_outputs()
+
+# Update simulation on each interval tick
+@app.callback(
+    [Output('sim-state', 'data', allow_duplicate=True),
      Output('running-state', 'data', allow_duplicate=True),
      Output('interval-component', 'disabled', allow_duplicate=True),
      Output('start-btn', 'disabled', allow_duplicate=True),
      Output('stop-btn', 'disabled', allow_duplicate=True),
      Output('start-btn', 'style', allow_duplicate=True),
      Output('stop-btn', 'style', allow_duplicate=True)],
-    [Input('interval-component', 'n_intervals'),
-     Input('sim-state', 'data'),
-     Input('running-state', 'data')],
-    [State('speed-multiplier', 'value')],
+    [Input('interval-component', 'n_intervals')],
+    [State('sim-state', 'data'),
+     State('running-state', 'data'),
+     State('speed-multiplier', 'value')],
     prevent_initial_call=True
 )
-def update_charts(n_intervals, sim_data, is_running, speed_multiplier):
-    # Button styles for auto-stop
+def update_simulation_step(n_intervals, sim_data, is_running, speed_multiplier):
+    """Run simulation steps and update state"""
+    # Button styles
     start_enabled_style = {
         'width': '120px', 'padding': '10px 20px', 'fontSize': '14px', 'fontWeight': '500',
         'backgroundColor': '#27ae60', 'color': 'white', 'border': 'none',
@@ -418,61 +439,52 @@ def update_charts(n_intervals, sim_data, is_running, speed_multiplier):
     }
     
     try:
-        if sim_data is None:
-            outputs = create_empty_outputs()
-            return outputs + (sim_data, False, True, False, True, start_enabled_style, stop_disabled_style)
+        if sim_data is None or not is_running:
+            # Not running - keep current state
+            if is_running:
+                return (sim_data, True, False, True, False, start_disabled_style, stop_enabled_style)
+            else:
+                return (sim_data, False, True, False, True, start_enabled_style, stop_disabled_style)
         
         # Deserialize simulation
         sim = WealthInequalitySimulation.from_dict(sim_data)
         
-        # Run simulation step if running
+        # Run simulation steps
         simulation_should_stop = False
-        if is_running and n_intervals is not None and n_intervals > 0:
-            # Run multiple steps based on speed multiplier
-            if speed_multiplier is None:
-                speed_multiplier = 1
-            
-            # Cap speed multiplier to prevent UI freezing
-            max_steps = min(int(speed_multiplier), 100)
-            
-            for _ in range(max_steps):
-                can_continue = sim.step()
-                if not can_continue:
-                    simulation_should_stop = True
-                    break
-                
-                # Safety check: if only a few agents left, slow down
-                active_count = len([a for a in sim.agents if a.active])
-                if active_count < 2:
-                    simulation_should_stop = True
-                    break
+        if speed_multiplier is None:
+            speed_multiplier = 1
         
-        # Get current results
-        results = sim.get_current_results()
+        # Cap speed multiplier to prevent UI freezing
+        max_steps = min(int(speed_multiplier), 100)
+        
+        for _ in range(max_steps):
+            can_continue = sim.step()
+            if not can_continue:
+                simulation_should_stop = True
+                break
+            
+            # Safety check: if only a few agents left, slow down
+            active_count = len([a for a in sim.agents if a.active])
+            if active_count < 2:
+                simulation_should_stop = True
+                break
         
         # Serialize back
         sim_data = sim.to_dict()
         
-        # Create all outputs
-        outputs = create_all_outputs(sim, results, is_running and not simulation_should_stop)
-        
         # Auto-stop if simulation is complete
         if simulation_should_stop:
-            return outputs + (sim_data, False, True, False, True, start_enabled_style, stop_disabled_style)
+            return (sim_data, False, True, False, True, start_enabled_style, stop_disabled_style)
         else:
-            # Keep current button states
-            if is_running:
-                return outputs + (sim_data, True, False, True, False, start_disabled_style, stop_enabled_style)
-            else:
-                return outputs + (sim_data, False, True, False, True, start_enabled_style, stop_disabled_style)
+            # Keep running
+            return (sim_data, True, False, True, False, start_disabled_style, stop_enabled_style)
     
     except Exception as e:
         # Log error and reset simulation to recover
-        print(f"Error in update_charts: {e}")
+        print(f"Error in update_simulation_step: {e}")
         import traceback
         traceback.print_exc()
-        outputs = create_empty_outputs()
-        return outputs + (None, False, True, False, True, start_enabled_style, stop_disabled_style)
+        return (None, False, True, False, True, start_enabled_style, stop_disabled_style)
 
 def create_empty_outputs():
     empty_fig = go.Figure()
